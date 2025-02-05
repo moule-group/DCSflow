@@ -1,0 +1,21 @@
+[project]
+name = "dcsflow"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "raykang35", email = "raykang35@icloud.com" }
+]
+requires-python = ">=3.9"
+dependencies = [
+    "ase>=3.24.0",
+    "hsd>=0.1",
+    "phonopy>=2.36.0",
+]
+
+[project.scripts]
+dcsflow = "dcsflow:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
