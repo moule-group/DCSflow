@@ -18,7 +18,7 @@ def main():
     parser.add_argument("-w", "--workflow", type=int, default=1, help="Please choose the workflow you want to run (type the number)") # Add an argument: workflow
     parser.add_argument("-l", "--local", action='store_true', default=False, help="VASP simulation running in local desktops!") # Add an argument: locak
     parser.add_argument("-g", "--gpu", action='store_true', default=True, help="VASP 6 simulation running in HPC GPU nodes!") # Add an argument: gpu
-    parser.add_argument("-h", "--hpc", type=int, nargs=3, default=[8,32,8], help="srun setting for VASP simulation, ex: srun -n {8} -c {32} -G {8} --cpu-bind=cores --gpu-bind=none vasp_std'") # Add an argument: hpc
+    parser.add_argument("-H", "--hpc", type=int, nargs=3, default=[8,32,8], help="srun setting for VASP simulation, ex: srun -n {8} -c {32} -G {8} --cpu-bind=cores --gpu-bind=none vasp_std") # Add an argument: hpc
     parser.add_argument("-f", "--force", type=float, default=1e-2, help="Converge if forces on all atoms < fmax; Defaults to 1e-2 (DFTB can be set to 1e-3!") # Add an argument: force
     parser.add_argument("-t1", "--temp1", type=float, default=150.0, help="Initial temperature for MD simulation; Defaults to 150K! ") # Add an argument: temp1
     parser.add_argument("-t2", "--temp2", type=float, default=150.0, help="Final temperature for MD simulation; Defaults to 150K! (Only useful when training MLFF using NPT)") # Add an argument: temp2

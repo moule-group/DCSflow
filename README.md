@@ -39,7 +39,7 @@ There are 2 methods simulating phonon spectrum and convert into inelastic neutro
 |    -w    |    1     |     2    |     3    |     4    | 
 |    -l    |    f     |    N/A   |     f    |   N/A    |  
 |    -g    |    t     |    N/A   |     t    |    N/A   | 
-|    -h    | [8,32,8] |    N/A   | [8,32,8] |    N/A   |  
+|    -H    | [8,32,8] |    N/A   | [8,32,8] |    N/A   |  
 |    -f    |   1e-2   |   1e-2   |   1e-2   |   1e-2   |
 |    -t1   |   N/A    |   N/A    |    150   |    150   |
 |    -t2   |   N/A    |    N/A   |    150   |    N/A   |

@@ -27,7 +27,7 @@ def getGeometry(path):
     return file[0]
 
 # 1st flow: DFT-FD
-def dftfd(local,gpu,hpc,kpts, disp, fmax, mesh, supercell):
+def dftfd(local, gpu, hpc, kpts, disp, fmax, mesh, supercell):
     """ Run DFT simulation with VASP, Phonopy and Oclimax to get INS spectrum
     local (boolean): If True, run VASP on local machine, otherwise run on HPC 
     gpu (boolean): If True, run VASP with GPU, otherwise run on CPU 
@@ -161,7 +161,7 @@ def dftbfd(kpts, disp, fmax, mesh, supercell):
 
 # 3rd flow: DFT-MD
 
-def dftmd(local,gpu,hpc,kpts,disp,fmax,nsw1,nsw2,steps,supercell,tebeg,teend):
+def dftmd(local, gpu, hpc, kpts, disp, max, nsw1, nsw2, steps, supercell, tebeg, teend):
     """ Run DFT-MD simulation with VASP and Oclimax to get INS spectrum
     local (boolean): If True, run VASP on local machine, otherwise run on HPC 
     gpu (boolean): If True, run VASP with GPU, otherwise run on CPU 

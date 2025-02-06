@@ -58,7 +58,7 @@ def dft(disp, fmax, kpts, atoms, mode):
                     ediff=1.00e-06,
                     ediffg=(-1*fmax),
                     nsw=1000,
-                    ivdw=IVDW,
+                    ivdw=disp,
                     isif=3,
                     ibrion=2,
                     kpts=kpts,
@@ -78,7 +78,7 @@ def dft(disp, fmax, kpts, atoms, mode):
                     ediff=1.00e-06,
                     ediffg=(-1*fmax),
                     nsw=0,
-                    ivdw=IVDW,
+                    ivdw=disp,
                     isif=3,
                     ibrion=-1,
                     kpts=kpts,
@@ -113,7 +113,7 @@ def md(disp, nsw, tebeg, teend, kpts, atoms, ensemble):
                     ibrion=0, # MD simulation
                     isif=2, # fix cell volume
                     nsw=nsw, # number of steps
-                    ivdw=IVDW,
+                    ivdw=disp,
                     ediff=1.00e-06,
                     ediffg=-1.00e-2,
                     mdalgo=2, # Nose Hoover
@@ -141,7 +141,7 @@ def md(disp, nsw, tebeg, teend, kpts, atoms, ensemble):
                     ibrion=0, # MD simulation
                     isif=2, # fix cell volume
                     nsw=nsw, # number of steps
-                    ivdw=IVDW,
+                    ivdw=disp,
                     ediff=1.00e-06,
                     ediffg=-1.00e-2,
                     mdalgo=1, # Andersen
@@ -170,7 +170,7 @@ def md(disp, nsw, tebeg, teend, kpts, atoms, ensemble):
                     ediffg=-1.00e-2,
                     kpts=kpts,
                     nsw=nsw,
-                    ivdw=IVDW,
+                    ivdw=disp,
                     ibrion=0,
                     potim=0.25,
                     tebeg=tebeg,
