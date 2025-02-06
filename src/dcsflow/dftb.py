@@ -54,14 +54,14 @@ wn_to_au = 0.725163330219952E-06 # 1 cm-1
 def md(disp,nsw,temp,kpts,atoms,ensemble):
     """ Run MD using DFTB calculatior 
     Args:
-    disp (boolean): Dispersion correction using DFT-D3  
+    disp (int): Set dispersion, disp>0 set DFT-D3 method with Becke-Johnson damping function 
     nsw (int): Number of MD steps
     temp (float): Temperature 
     kpts (list): Number of kpts.
     atoms (str): ASE atoms object.
     ensemble (int): 1:NVT; 2:NVE
     """
-    if not disp:
+    if disp <= 0:
         calc_nvt = Dftb(label='nvt', 
                         Driver_='VelocityVerlet', # Verlet algorithm 
                         Driver_MovedAtoms='1:-1',
@@ -173,7 +173,7 @@ def md(disp,nsw,temp,kpts,atoms,ensemble):
         atoms.calc = calc_nvt
         calc_nvt.write_input(atoms) 
      
-    elif ensemble == 2:
+    if ensemble == 2:
         atoms.calc = calc_nve
         calc_nve.write_input(atoms) 
 
@@ -187,12 +187,12 @@ def relax(disp,fmax,kpts,atoms):
     the value of the highest orbital angular momentum each element
     ##############################################
     Args:
+    disp (int): Set dispersion, disp>0 set DFT-D3 method with Becke-Johnson damping function 
     kpts (list): number of kpoints for relaxation. (Defaults to [1,1,1], it should be increased.)
     fmax (float): Maximum allowed force for convergence between atoms (Defaults to 1e-3)
-    disp (boolean): Dispersion correction using DFT-D3 (Defaults to False)
     atoms (str): ASE atoms object.
     """
-    if not disp:
+    if disp <= 0:
         calc = Dftb(label='relax', 
                 Driver_='ConjugateGradient', # relax algorithm (This command will be change in later version)
                 Driver_MovedAtoms='1:-1',
@@ -254,11 +254,11 @@ def force(disp, kpts, atoms):
     """ Single point energy calculation and extract force by using DFTB,
     this step is for getting phonons with phonopy.
     Args:   
-    disp (boolean): Dispersion correction using DFT-D3 (Defaults to False)
+    disp (int): Set dispersion, disp>0 set DFT-D3 method with Becke-Johnson damping function 
     kpts (list): kpoints list for single point energy simulation. (Defaults to [1,1,1])
     atoms (str): ASE atoms object.
     """
-    if not disp:
+    if disp <= 0:
         calc = Dftb(label='Force', 
                 kpts=kpts,
                 Analysis_='',

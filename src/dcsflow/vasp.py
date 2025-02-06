@@ -43,17 +43,12 @@ import time
 def dft(disp, fmax, kpts, atoms, mode):
     """ Create VASP DFT input files
     Args:
-    disp (boolean): If True, set ivdw=12, which is DFT-D3 method with Becke-Johnson damping function 
+    disp (int): Set ivdw in INCAR, 12: DFT-D3 method with Becke-Johnson damping function 
     fmax (float): Maximum allowed force for convergence between atoms 
     kpts (list): number of kpts for DFT simulation. 
     atoms (str): ASE atoms object.
     mode (int): 1. relax 2. phonons
     """
-    if not disp:
-        IVDW = 0
-    else:
-        IVDW = 12
-    
     if mode == 1:
         calc = Vasp(prec="Accurate",
                     xc="pbe",
@@ -61,7 +56,7 @@ def dft(disp, fmax, kpts, atoms, mode):
                     ismear=0,
                     sigma=0.050000,
                     ediff=1.00e-06,
-                    ediffg=-fmax,
+                    ediffg=(-1*fmax),
                     nsw=1000,
                     ivdw=IVDW,
                     isif=3,
@@ -81,7 +76,7 @@ def dft(disp, fmax, kpts, atoms, mode):
                     ismear=0,
                     sigma=0.050000,
                     ediff=1.00e-06,
-                    ediffg=-fmax,
+                    ediffg=(-1*fmax),
                     nsw=0,
                     ivdw=IVDW,
                     isif=3,
@@ -100,19 +95,14 @@ def dft(disp, fmax, kpts, atoms, mode):
 def md(disp, nsw, tebeg, teend, kpts, atoms, ensemble):
     """ Create VASP MD input files
     Args:
-    disp (boolean): If True, set ivdw=12, which is DFT-D3 method with Becke-Johnson damping function
+    disp (int): Set ivdw in INCAR, 12: DFT-D3 method with Becke-Johnson damping function 
     nsw (int): Number of MD steps
     tebeg (float): Beginning temp (K)
     teend (float): Ending temp (K)
     kpts (list): number of KPOINTS
     atoms (str): ASE atoms object
     ensemble (int): 1: NVT; 2:NVE 3:NPT
-    """
-    if not disp:
-        IVDW = 0
-    else:
-        IVDW = 12
-    
+    """ 
     if ensemble == 1: # Nose-Hoover NVT
         calc = Vasp(prec='Accurate',
                     xc='pbe',

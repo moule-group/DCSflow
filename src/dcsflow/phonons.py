@@ -17,7 +17,7 @@ def displace_structure(calc, supercell):
     # Read the relaxed structure (CONTCAR)
     if calc == 'vasp':
         path = 'CONTCAR' 
-    if calc == 'dftb': 
+    if calc == 'dftb+': 
         path = 'geo_end.gen' 
     
     unitcell, _ = read_crystal_structure(path, interface_mode=calc)

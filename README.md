@@ -1,8 +1,15 @@
-# 
+# Davis Computational Spectroscopy Workflow 
+
+DCS-flow is a tool to simulate inelastic neutron scattering (INS) spectrum, it is still under development.
 
 
-# Installation
+## Installation
 
+1. DCSflow
+
+```
+
+```
 
 2. DFTB+: 
 
@@ -24,6 +31,27 @@ There are 2 methods simulating phonon spectrum and convert into inelastic neutro
 1. 2 Methods for simulating INS spectrum. One is finite displacement method (FD) and the other is molecular dynamics method (MD). The theory of these 2 methods are written in next section. 
 
 2. There are 2 calculators in DCS-flow, one is VASP and the other is DFTB+.
+
+3. Commands default table
+
+|  Command |  DFT-FD  |  DFTB-FD |  DFT-MD  | DFTB-MD  |   
+|----------|----------|----------|----------|----------|
+|    -w    |    1     |     2    |     3    |     4    | 
+|    -l    |    f     |    N/A   |     f    |   N/A    |  
+|    -g    |    t     |    N/A   |     t    |    N/A   | 
+|    -h    | [8,32,8] |    N/A   | [8,32,8] |    N/A   |  
+|    -f    |   1e-2   |   1e-2   |   1e-2   |   1e-2   |
+|    -t1   |   N/A    |   N/A    |    150   |    150   |
+|    -t2   |   N/A    |    N/A   |    150   |    N/A   |
+|    -k    | [1,1,1]  | [1,1,1]  | [1,1,1]  | [1,1,1]  |
+|    -s    | [2,2,2]  | [2,2,2]  | [2,2,2]  | [2,2,2]  |
+|    -d    |    12    |    12    |    12    |    12    |
+|    -m    | [8,8,8]  | [8,8,8]  |   N/A    |    N/A   |
+|    -n1   |    N/A   |   N/A    |   4000   |   4000   |
+|    -n2   |    N/A   |   N/A    |   4000   |   4000   |
+|    -step |    N/A   |   N/A    |    10    |    10    |
+
+
 
 ## Theory
 

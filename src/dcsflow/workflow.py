@@ -27,8 +27,11 @@ def getGeometry(path):
     return file[0]
 
 # 1st flow: DFT-FD
-def dftfd(kpts, disp, fmax, mesh, supercell):
+def dftfd(local,gpu,hpc,kpts, disp, fmax, mesh, supercell):
     """ Run DFT simulation with VASP, Phonopy and Oclimax to get INS spectrum
+    local (boolean): If True, run VASP on local machine, otherwise run on HPC 
+    gpu (boolean): If True, run VASP with GPU, otherwise run on CPU 
+    hpc (list): srun setting for VASP simulation, Defaults: srun -n {8} -c {32} -G {8} --cpu-bind=cores --gpu-bind=none vasp_std'
     kpts (list): number of KPOINTS. (for Phonon simulation, Defaults to [1,1,1], need user input for relaxation.)
     disp (boolean): If True, set ivdw=12, which is DFT-D3 method with Becke-Johnson damping function (Defaults to True)
     fmax: Maximum allowed force for convergence between atoms (Defaults to 1e-2)
@@ -40,9 +43,14 @@ def dftfd(kpts, disp, fmax, mesh, supercell):
         print(" Writing VASP input files! ")
         os.makedirs(os.path.join(main_path, "1-relax"), exist_ok=True)
         os.chdir(os.path.join(main_path, "1-relax")) # Change directory to 1-relax
-        ase.io.read(getGeometry(main_path))
-        vas.dft(disp, fmax, kpts, atoms=atom, mode=1)
-        subprocess.run('vasp_std', shell=True) # Run VASP
+        atom = ase.io.read(getGeometry(main_path))
+        va.dft(disp, fmax, kpts, atoms=atom, mode=1)
+        if local:
+            subprocess.run('vasp_std', shell=True) # Run VASP on local machine
+        if gpu:
+            subprocess.run(f'srun -n {hpc[0]} -c {hpc[1]} -G {hpc[2]} --cpu-bind=cores --gpu-bind=none vasp_std', shell=True) # Run VASP on hpc gpu nodes
+        else:
+            subprocess.run(f'srun -n {hpc[0]} -c {hpc[1]} --cpu-bind=cores vasp_std', shell=True) # Run VASP on hpc cpu nodes
         os.chdir(main_path)
             
     else:
@@ -55,7 +63,7 @@ def dftfd(kpts, disp, fmax, mesh, supercell):
         dst = os.path.join(main_path, "2-phonons") # destination
         os.makedirs(dst, exist_ok=True)
         os.chdir(dst)
-        shutil.copyfile(src, dst)
+        shutil.copy(src, dst+'POSCAR')
         
         ph.displace_structure(calc='vasp', supercell=[2,2,2]) # Create displaced POSCAR files by Phonopy
         root, dirs, files = next(os.walk(dst))
@@ -74,8 +82,14 @@ def dftfd(kpts, disp, fmax, mesh, supercell):
             for d in dirs2:
                 os.chdir(d)
                 atom = ase.io.read('POSCAR')
-                vas.dft(disp, fmax, kpts=ph_kpts, atoms=atom, mode=2)
-                subprocess.run('vasp_std', shell=True)
+                va.dft(disp, fmax, kpts=ph_kpts, atoms=atom, mode=2)
+                if local:
+                    subprocess.run('vasp_std', shell=True) # Run VASP on local machine
+                if gpu:
+                    subprocess.run(f'srun -n {hpc[0]} -c {hpc[1]} -G {hpc[2]} --cpu-bind=cores --gpu-bind=none vasp_std', shell=True) # Run VASP on hpc gpu nodes
+                else:
+                    subprocess.run(f'srun -n {hpc[0]} -c {hpc[1]} --cpu-bind=cores vasp_std', shell=True) # Run VASP on hpc cpu nodes
+                
                 os.chdir('..')
         
         ph.get_force_sets(calc='vasp')
@@ -100,7 +114,7 @@ def dftbfd(kpts, disp, fmax, mesh, supercell):
         print(" Writing DFTB+ input files! ")
         os.makedirs(os.path.join(main_path, "1-relax"), exist_ok=True)
         os.chdir(os.path.join(main_path, "1-relax")) # Change directory to 1-relax
-        ase.io.read(getGeometry(main_path))
+        atom = ase.io.read(getGeometry(main_path))
         db.relax(disp,fmax,kpts,atoms=atom)
         subprocess.run('ulimit -s unlimited', shell=True)
         subprocess.run('dftb+ > relax.out', shell=True)
@@ -114,9 +128,9 @@ def dftbfd(kpts, disp, fmax, mesh, supercell):
         dst = os.path.join(main_path, '2-phonons') # destination
         os.makedirs(dst, exist_ok=True)
         os.chdir(dst)
-        shutil.copyfile(src, dst)
+        shutil.copy(src, dst)
         
-        ph.displace_structure(calc='dftb', supercell=[2,2,2]) # Create displaced geo.genS files
+        ph.displace_structure(calc='dftb+', supercell=[2,2,2]) # Create displaced geo.genS files
         root, dirs, files = next(os.walk(dst))
         
         for file in files:
@@ -132,11 +146,11 @@ def dftbfd(kpts, disp, fmax, mesh, supercell):
             root2, dirs2, files2 = next(os.walk(dst))
             for d in dirs2:
                 os.chdir(d)
-                ase.io.read("geo_end.gen")
+                atom = ase.io.read("geo_end.gen")
                 db.force(disp, kpts=ph_kpts, atoms=atom)
                 subprocess.run('dftb+ > force.out', shell=True)
                 os.chdir('..')
-        ph.get_force_sets(calc='dftb')
+        ph.get_force_sets(calc='dftb+')
         ph.run_mesh(mesh)
     
     else:
@@ -147,8 +161,10 @@ def dftbfd(kpts, disp, fmax, mesh, supercell):
 
 # 3rd flow: DFT-MD
 
-def dftmd(kpts,disp,fmax,nsw1,nsw2,steps,supercell,tebeg,teend):
+def dftmd(local,gpu,hpc,kpts,disp,fmax,nsw1,nsw2,steps,supercell,tebeg,teend):
     """ Run DFT-MD simulation with VASP and Oclimax to get INS spectrum
+    local (boolean): If True, run VASP on local machine, otherwise run on HPC 
+    gpu (boolean): If True, run VASP with GPU, otherwise run on CPU 
     kpts (list): number of KPOINTS.
     disp (boolean): If True, set ivdw=12, which is DFT-D3 method with Becke-Johnson damping function (Defaults to True)
     fmax (float): Maximum allowed force for convergence between atoms (Defaults to 1e-2)
@@ -165,8 +181,14 @@ def dftmd(kpts,disp,fmax,nsw1,nsw2,steps,supercell,tebeg,teend):
         os.makedirs(os.path.join(main_path, "1-relax"), exist_ok=True)
         os.chdir(os.path.join(main_path, "1-relax")) # Change directory to 1-relax
         atom = ase.io.read(getGeometry(main_path))
-        vas.dft(disp, fmax, kpts, atoms=atom, mode='relax')
-        subprocess.run('vasp_std', shell=True) # Run VASP
+        va.dft(disp, fmax, kpts, atoms=atom, mode='relax')
+        if local:
+            subprocess.run('vasp_std', shell=True) # Run VASP on local machine
+        if gpu:
+            subprocess.run(f'srun -n {hpc[0]} -c {hpc[1]} -G {hpc[2]} --cpu-bind=cores --gpu-bind=none vasp_std', shell=True) # Run VASP on hpc gpu nodes
+        else:
+            subprocess.run(f'srun -n {hpc[0]} -c {hpc[1]} --cpu-bind=cores vasp_std', shell=True) # Run VASP on hpc cpu nodes
+        
         os.chdir(main_path)
             
     else:
@@ -176,10 +198,15 @@ def dftmd(kpts,disp,fmax,nsw1,nsw2,steps,supercell,tebeg,teend):
     if not os.path.exists(os.path.join(main_path, "2-nvtmd", "vasprun.xml")):
         print(" Writing VASP input files! ")
         os.makedirs(os.path.join(main_path, "2-nvtmd"), exist_ok=True)
-        atom = ase.io.read('1-relax/CONTCAR')
+        atom = ase.io.read(os.path.join(main_path,'1-relax','CONTCAR'))
         atom *= supercell
-        vas.md(disp,nsw1,tebeg,teend,kpts=md_kpts,atoms=atom,ensemble=1)
-        subprocess.run('vasp_std', shell=True)
+        va.md(disp,nsw1,tebeg,teend,kpts=md_kpts,atoms=atom,ensemble=1)
+        if local:
+            subprocess.run('vasp_std', shell=True) # Run VASP on local machine
+        if gpu:
+            subprocess.run(f'srun -n {hpc[0]} -c {hpc[1]} -G {hpc[2]} --cpu-bind=cores --gpu-bind=none vasp_std', shell=True) # Run VASP on hpc gpu nodes
+        else:
+            subprocess.run(f'srun -n {hpc[0]} -c {hpc[1]} --cpu-bind=cores vasp_std', shell=True) # Run VASP on hpc cpu nodes
 
     else:
         print(" The thermalization (NVT-MD) is already finished, Continue to NVE-MD !!! ")
@@ -187,17 +214,22 @@ def dftmd(kpts,disp,fmax,nsw1,nsw2,steps,supercell,tebeg,teend):
     if not os.path.exists(os.path.join(main_path, "3-nvemd")):
         print(" Writing VASP input files! ")
         os.makedirs(os.path.join(main_path, "3-nvemd"), exist_ok=True)
-        atom = ase.io.read('2-nvtmd/CONTCAR')
+        atom = ase.io.read(os.path.join(main_path,'2-nvtmd','CONTCAR'))
         os.makedirs(os.path.join(main_path, "3-nvemd", "1"), exist_ok=True)
-        vas.md(disp,nsw2,tebeg,teend,kpts=md_kpts,atoms=atom,ensemble=2)
+        va.md(disp,nsw2,tebeg,teend,kpts=md_kpts,atoms=atom,ensemble=2)
         subprocess.run('vasp_std', shell=True)
         os.chdir('..')
         for i in range(1,steps):
             atom = ase.io.read('3-nvemd/'+str(i)+'/CONTCAR')
             os.makedirs(os.path.join(main_path, "3-nvemd", str(i+1)), exist_ok=True)
             os.chdir(os.path.join(main_path, "3-nvemd", str(i+1)))
-            vas.md(disp,nsw2,temp,kpts=md_kpts,atoms=atom,ensemble=2)
-            subprocess.run('vasp_std', shell=True)
+            va.md(disp,nsw2,temp,kpts=md_kpts,atoms=atom,ensemble=2)
+            if local:
+                subprocess.run('vasp_std', shell=True) # Run VASP on local machine
+            if gpu:
+                subprocess.run(f'srun -n {hpc[0]} -c {hpc[1]} -G {hpc[2]} --cpu-bind=cores --gpu-bind=none vasp_std', shell=True) # Run VASP on hpc gpu nodes
+            else:
+                subprocess.run(f'srun -n {hpc[0]} -c {hpc[1]} --cpu-bind=cores vasp_std', shell=True) # Run VASP on hpc cpu nodes
             os.chdir('..')
 
     else:
@@ -234,9 +266,9 @@ def dftbmd(kpts,disp,fmax,nsw1,nsw2,steps,supercell,temp):
     md_kpts = [1,1,1]
     if not os.path.exists(os.path.join(main_path, "2-nvtmd", "nvt.out")): # Check whether the nvtmd simulation is finished.
         os.makedirs(os.path.join(main_path, "2-nvtmd"), exist_ok=True)
-        atom = ase.io.read('1-relax/geo_end.gen')
+        atom = ase.io.read(os.path.join(main_path, '1-relax', 'geo_end.gen'))
         atom *= supercell
-        db.md(disp,kpts,nsw1,temp,kpts=md_kpts,atoms=atom,ensemble=1)
+        db.md(disp,nsw1,temp,kpts=md_kpts,atoms=atom,ensemble=1)
         subprocess.run('dftb+ > md.out', shell=True)
                               
     else:
@@ -245,7 +277,7 @@ def dftbmd(kpts,disp,fmax,nsw1,nsw2,steps,supercell,temp):
     if not os.path.exists(os.path.join(main_path, "3-nvemd", "f{steps}")):
         print(" Writing DFTB+ input files! ")
         os.makedirs(os.path.join(main_path, "3-nvemd"), exist_ok=True) # Here we will create subfolders for NVE-MD simulation.
-        atom = ase.io.read('2-nvtmd/geo_end.gen')
+        atom = ase.io.read(os.path.join(main_path,'2-nvtmd','geo_end.gen'))
         os.makedirs(os.path.join(main_path, "3-nvemd", "1"), exist_ok=True)
         db.md(disp,nsw2,temp,kpts=md_kpts,atoms=atom,ensemble=2)
         subprocess.run('dftb+ > nve.out', shell=True)
