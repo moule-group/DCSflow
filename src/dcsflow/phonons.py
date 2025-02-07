@@ -1,9 +1,11 @@
 ########## Phonons module ##########
 
 import os
+import numpy as np
+import phonopy
 from phonopy import Phonopy
 from phonopy.interface.calculator import read_crystal_structure
-from phonopy.cui.create_force_sets import create_FORCE_SETS
+from phonopy.interface.calculator import write_supercells_with_displacements
 
 def displace_structure(calc, supercell):
     """ Run Phonopy to create displaced supercell structure
@@ -17,18 +19,26 @@ def displace_structure(calc, supercell):
     # Read the relaxed structure (CONTCAR)
     if calc == 'vasp':
         path = 'CONTCAR' 
-    if calc == 'dftb+': 
+    if calc == 'dftbp': 
         path = 'geo_end.gen' 
     
     unitcell, _ = read_crystal_structure(path, interface_mode=calc)
     
+    supercell_matrix = np.diag(supercell)
     phonon = Phonopy(unitcell,
-                     supercell_matrix=[[supercell[0], 0, 0], [0, supercell[1], 0], [0, 0, supercell[2]]],
-                     primitive_matrix=[[0, 0.5, 0.5],
-                                       [0.5, 0, 0.5],
-                                       [0.5, 0.5, 0]])
+                     supercell_matrix=supercell_matrix,
+                     )
     phonon.generate_displacements()
-    supercells = phonon.supercells_with_displacements
+    cells_with_disps = phonon.supercells_with_displacements
+
+    write_supercells_with_displacements(
+        calc,
+        phonon.supercell,
+        cells_with_disps,
+        optional_structure_info=None, # Default in Phonopy is None
+        additional_info=None, # Default in Phonopy is None
+    )
+    phonon.save('phonopy_disp.yaml')
 
 def get_force_sets(calc):
     """ Obtain FORCE_SETS file for specific calculator from Phonopy.
@@ -46,17 +56,14 @@ def get_force_sets(calc):
     Return:
     FORCE_SETS file
     """
-    dirlist = sorted([x.name for x in os.scandir() if x.is_dir()])
-    
+    root, dirs, files = next(os.walk(os.getcwd()))
+    dirs = [d for d in dirs if len(d) <= 3]
+    max_dir = max(dirs)
     if calc == 'vasp':
-        filepath = [x + '/vasprun.xml' for x in dirlist]
+        subprocess.run(f"phonopy -f {{001..{max_dir}}}/vasprun.xml", shell=True)
 
-    if calc == 'dftb':
-        filepath = [x + '/results.tag' for x in dirlist]
-        
-    create_FORCE_SETS(interface_mode=calc,
-                      force_filenames=filepath,
-                      disp_filename='phonopy_disp.yaml')
+    if calc == 'dftbp':
+        subprocess.run(f"phonopy -f {{001..{max_dir}}}/results.tag --dftb+", shell=True)
 
 def run_mesh(mesh):
     """ Run Phonopy to create mesh.yaml file which saves normal mode frequencies and eigenvectors.

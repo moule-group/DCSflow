@@ -1,9 +1,9 @@
-import dcsflow.workflow as workflow
+from dcsflow.workflow import Dftfd, Dftbfd, Dftmd, Dftbmd
 import argparse
+import time
 
-def main():
-    """ The main function to run the DCS-Flow 
-    """
+def print_start():
+    """ printing the start of the DCS-Flow"""
     print(" ----------------------------------------------------------------- ")
     print(" Starting Davis Computation Spectroscopy Flow (DCS-Flow)  !!! ")
     print(" Made by Moule Group at UC Davis (version: 0.1.0) ")
@@ -12,11 +12,33 @@ def main():
     print(" $      $   $            #######           ")
     print(" $     $    $                  $  ")
     print(" ######     ##########   #######  ")
-    print(" ----------------------------------------------------------------- ")
+    print(time.ctime())
 
+def print_end():
+    """ printing the end of the DCS-Flow """
+    print(" ----------------------------------------------------------------- ")
+    print(
+    """                 
+    #########  ##    #  #########
+    $          # #   #  $       $
+    ########   #  #  #  $      $
+    $          #   # #  $     $ 
+    #########  #    ##  ######
+    """
+    )
+    print(time.ctime())
+
+def main():
+    """ The main function to run the DCS-Flow 
+    """
     parser = argparse.ArgumentParser() # Create the parser
     parser.add_argument("-w", "--workflow", type=int, default=1, help="Please choose the workflow you want to run (type the number)") # Add an argument: workflow
-    parser.add_argument("-l", "--local", action='store_true', default=False, help="VASP simulation running in local desktops!") # Add an argument: locak
+    parser.add_argument("-r", "--relax", action='store_true',default=False, help="Relaxation under each workflow") # Add an argument: relax
+    parser.add_argument("-p", "--phonon", action='store_true',default=False, help="Phonon simulation under 1st and 2nd workflow") # Add an argument: phonon
+    parser.add_argument("-nvt", "--nvtmd", action='store_true',default=False, help="NVT MD under each 3rd and 4th workflow") # Add an argument: nvtmd
+    parser.add_argument("-nve", "--nvemd", action='store_true',default=False, help="NVE MD under each 3rd and 4th workflow") # Add an argument: nvemd
+    parser.add_argument("-o", "--oclimax", action='store_true',default=False, help="Oclimax under each workflow") # Add an argument: oclimax
+    parser.add_argument("-l", "--local", action='store_true', default=False, help="VASP simulation running in local desktops!") # Add an argument: local
     parser.add_argument("-g", "--gpu", action='store_true', default=True, help="VASP 6 simulation running in HPC GPU nodes!") # Add an argument: gpu
     parser.add_argument("-H", "--hpc", type=int, nargs=3, default=[8,32,8], help="srun setting for VASP simulation, ex: srun -n {8} -c {32} -G {8} --cpu-bind=cores --gpu-bind=none vasp_std") # Add an argument: hpc
     parser.add_argument("-f", "--force", type=float, default=1e-2, help="Converge if forces on all atoms < fmax; Defaults to 1e-2 (DFTB can be set to 1e-3!") # Add an argument: force
@@ -31,26 +53,114 @@ def main():
     parser.add_argument("-step", "--steps", type=int, default=10, help="Multiple of NVE-MD steps; (i.e. 4000*steps is the total steps for NVE-MD) Defaults to 10!") # Add an argument: steps
     args = parser.parse_args() # Parse the argument
 
-    if args.workflow == 1:
-        print(" ----------------------------------------------------------------- ")
-        print(" 1st flow: DFT-FD: VASP DFT --> Phonopy --> Oclimax ")
-        print(" ----------------------------------------------------------------- ")
-        workflow.dftfd(local=args.local, gpu=args.gpu, hpc=args.hpc, kpts=args.kpts, disp=args.dispersion, fmax=args.force, mesh=args.mesh, supercell=args.supercell)
+    print_start() # Print the start of the DCS-Flow
 
+    if args.workflow == 1:
+        dftfd = Dftfd(local=args.local, gpu=args.gpu, hpc=args.hpc, kpts=args.kpts, disp=args.dispersion, 
+                      fmax=args.force, mesh=args.mesh, supercell=args.supercell)
+        if args.relax:
+            print(" ----------------------------------------------------------------- ")
+            print(" 1st flow: DFT-FD: RELAXATION --> (Phonon) --> (Oclimax) ")
+            print(" ----------------------------------------------------------------- ")
+            dftfd.relax()
+            print_end()
+        
+        if args.phonon:
+            print(" ----------------------------------------------------------------- ")
+            print(" 1st flow: DFT-FD: (Relaxation) --> PHONON --> (Oclimax) ")
+            print(" ----------------------------------------------------------------- ")
+            dftfd.phonons() 
+            print_end()
+
+        if args.oclimax:
+            print(" ----------------------------------------------------------------- ")
+            print(" 1st flow: DFT-FD: (Relaxation) --> (Phonon) --> OCLIMAX ")
+            print(" ----------------------------------------------------------------- ")
+            dftfd.oclimax()
+            print_end()
+    
     if args.workflow == 2:
-        print(" ----------------------------------------------------------------- ")
-        print(" 2nd flow: DFTB-FD: DFTB+ --> Phonopy --> Oclimax ")
-        print(" ----------------------------------------------------------------- ")
-        workflow.dftbfd(kpts=args.kpts, disp=args.dispersion, fmax=args.force, mesh=args.mesh, supercell=args.supercell)
+        dftbfd = Dftbfd(kpts=args.kpts, disp=args.dispersion, fmax=args.force, mesh=args.mesh, supercell=args.supercell)
+        if args.relax:
+            print(" ----------------------------------------------------------------- ")
+            print(" 2nd flow: DFTB-FD: RELAXATION --> (Phonon) --> (Oclimax) ")
+            print(" ----------------------------------------------------------------- ")
+            dftbfd.relax()
+            print_end()
+
+        if args.phonon:
+            print(" ----------------------------------------------------------------- ")
+            print(" 2nd flow: DFTB-FD: (Relaxation) --> PHONON --> (Oclimax) ")
+            print(" ----------------------------------------------------------------- ")
+            dftbfd.phonons()
+            print_end()
+
+        if args.oclimax:
+            print(" ----------------------------------------------------------------- ")
+            print(" 2nd flow: DFTB-FD: (Relaxation) --> (Phonon) --> OCLIMAX ")
+            print(" ----------------------------------------------------------------- ")
+            workflow.dftbfd.oclimax()
+            print_end()
         
     if args.workflow == 3: 
-        print(" ----------------------------------------------------------------- ")
-        print(" 3rd flow: DFT-MD: VASP DFT-MD --> Oclimax ")  
-        print(" ----------------------------------------------------------------- ")
-        workflow.dftmd(local=args.local, gpu=args.gpu, hpc=args.hpc, disp=args.dispersion, fmax=args.force, kpts=args.kpts, nsw1=args.nsw1, nsw2=args.nsw2, supercell=args.supercell, tebeg=args.temp1, teend=args.temp2)
+        dftmd = Dftmd(local=args.local, gpu=args.gpu, hpc=args.hpc, disp=args.dispersion, fmax=args.force, kpts=args.kpts, 
+                      nsw1=args.nsw1, nsw2=args.nsw2, supercell=args.supercell, tebeg=args.temp1, teend=args.temp2)
+        if args.relax:
+            print(" ----------------------------------------------------------------- ")
+            print(" 3rd flow: DFT-MD: RELAXATION --> (Nvt-md) --> (Nve-md) --> (Oclimax) ")  
+            print(" ----------------------------------------------------------------- ")
+            dftmd.relax()
+            print_end()
+        
+        if args.nvtmd:
+            print(" ----------------------------------------------------------------- ")
+            print(" 3rd flow: DFT-MD: (Relaxation) --> NVT-MD --> (Nve-md) --> (Oclimax) ")  
+            print(" ----------------------------------------------------------------- ")
+            dftmd.nvtmd()
+            print_end()
+
+        if args.nvemd:
+            print(" ----------------------------------------------------------------- ")
+            print(" 3rd flow: DFT-MD: (Relaxation) --> (Nvt-md) --> NVE-MD --> (Oclimax) ")  
+            print(" ----------------------------------------------------------------- ")
+            dftmd.nvemd()
+            print_end()
+
+        if args.oclimax:
+            print(" ----------------------------------------------------------------- ")
+            print(" 3rd flow: DFT-MD: (Relaxation) --> (Nvt-md) --> (Nve-md) --> OCLIMAX ")  
+            print(" ----------------------------------------------------------------- ")
+            dftmd.oclimax()
+            print_end()
 
     if args.workflow == 4:
-        print(" ----------------------------------------------------------------- ")
-        print(" 4th flow: DFTB-MD: DFTB+ DFTB-MD --> Oclimax ")
-        print(" ----------------------------------------------------------------- ")
-        workflow.dftbmd(disp=args.dispersion, fmax=args.force, kpts=args.kpts, nsw1=args.nsw1, nsw2=args.nsw2, steps=args.steps, supercell=args.supercell, temp=args.temp1)
+        dftbmd = Dftbmd(disp=args.dispersion, fmax=args.force, kpts=args.kpts, nsw1=args.nsw1, 
+                    nsw2=args.nsw2, steps=args.steps, supercell=args.supercell, temp=args.temp1)
+        if args.relax:
+            print(" ----------------------------------------------------------------- ")
+            print(" 4th flow: DFTB-MD: RELAXATION --> (Nvt-md) --> (Nve-md) --> (Oclimax) ")
+            print(" ----------------------------------------------------------------- ")
+            dftbmd.relax()
+            print_end()
+        
+        if args.nvtmd:
+            print(" ----------------------------------------------------------------- ")
+            print(" 4th flow: DFTB-MD: (Relaxation) --> NVT-MD --> (Nve-md) --> (Oclimax) ")
+            print(" ----------------------------------------------------------------- ")
+            dftbmd.nvtmd()
+            print_end()
+
+        if args.nvemd:  
+            print(" ----------------------------------------------------------------- ")
+            print(" 4th flow: DFTB-MD: (Relaxation) --> (Nvt-md) --> NVE-MD --> (Oclimax) ")
+            print(" ----------------------------------------------------------------- ")
+            dftbmd.nvemd()
+            print_end()
+        
+        if args.oclimax:
+            print(" ----------------------------------------------------------------- ")
+            print(" 4th flow: DFTB-MD: (Relaxation) --> (Nvt-md) --> (Nve-md) --> OCLIMAX ")
+            print(" ----------------------------------------------------------------- ")
+            dftbmd.oclimax()
+            print_end()
+        

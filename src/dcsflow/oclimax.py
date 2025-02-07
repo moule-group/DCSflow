@@ -67,7 +67,6 @@ def write_params(task, e_unit):
                 'A_ISO   =    0.0350  # Isotropic A_external for wing calculation\n'
                 'W_WIDTH =     150.0  # Energy width [eu] of initial wing)\n' .format(task, e_unit))
     
-
 def run_oclimax(mode,params,dt):
     """
     If convert.done file doesn't exist, runs OCLIMAX convert. Converts input mesh to out.oclimax or out.tclimax;
@@ -94,24 +93,7 @@ def run_oclimax(mode,params,dt):
         os.system('oclimax convert -lt velocity.dump {} 1>> ocl.out 2>> ocl.err'.format(float(dt)))
         os.system('oclimax run out.tclimax {} 1>> ocl.out 2>> ocl.err'.format(params))
 
-#def plot():
-#    """
-#    Creates plot using csv file (oclimax output with INS data) and saves as a png.
-#    Plots energy (meV) versus Normalized intensity. 
-#    """
-#    file = glob.glob('*.csv')
-#    df = pd.read_csv(file[0], skiprows=4, header=None)
-#    E = df.iloc[:, 0]
-#    totback = df.iloc[:, 1]
-#    totfor = df.iloc[:, 2]
-#    int = (totback + totfor) / 2
-
-#    plt.plot(E, int)
-#    plt.xlabel('Energy (cm$^{-1}$)')
-#    plt.ylabel('Normalized intensity')
-#    plt.savefig(file[0][:-4]+'.png', dpi=300, bbox_inches='tight', pad_inches=0)
-
-def run_oclimax(dt,params,task,e_unit,mode):
+def oclimax(dt,params,task,e_unit,mode):
     """
     Creates folder 3-oclimax, writes oclimax parameters file in folder and runs oclimax simulation.
     Args:
@@ -128,14 +110,23 @@ def run_oclimax(dt,params,task,e_unit,mode):
     main_path = os.getcwd()
 
     if mode == 1:
-        os.mkdir(folder + '/3-oclimax')
-        copyfile(folder + '/2-phonons/mesh.yaml', folder + '/3-oclimax/mesh.yaml')
+        os.makedirs(folder + '/3-oclimax', exist_ok=True)
+        try:
+            copyfile(folder + '/2-phonons/mesh.yaml', folder + '/3-oclimax/mesh.yaml')
+        except:
+            print("mesh.yaml file not found in 2-phonons folder")
     if mode == 2:
-        os.mkdir(folder + '/4-oclimax')
-        copyfile(folder + '/3-nvemd/XDATCAR', folder + '/4-oclimax/XDATCAR')
+        os.makedirs(folder + '/4-oclimax', exist_ok=True)
+        try:
+            copyfile(folder + '/3-nvemd/XDATCAR', folder + '/4-oclimax/XDATCAR')
+        except:
+            print("XDATCAR file not found in 3-nvemd folder.")
     if mode == 3:
-        os.mkdir(folder + '/4-oclimax')
-        copyfile(folder + '/3-nvemd/geo_end.xyz', folder + '/4-oclimax/geo_end.xyz')
+        os.makedirs(folder + '/4-oclimax', exist_ok=True)
+        try:
+            copyfile(folder + '/3-nvemd/geo_end.xyz', folder + '/4-oclimax/geo_end.xyz')
+        except:
+            print("geo_end.xyz file not found in 3-nvemd folder.")
     #if mode == 4:
     #    os.mkdir(folder + '/4-oclimax')       
     #    copyfile(folder + '/1-md/velocity.dump', folder + '/3-oclimax/velocity.dump')

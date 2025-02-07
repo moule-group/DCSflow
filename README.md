@@ -32,11 +32,16 @@ There are 2 methods simulating phonon spectrum and convert into inelastic neutro
 
 2. There are 2 calculators in DCS-flow, one is VASP and the other is DFTB+.
 
-3. Commands default table
+3. Commands table
 
 |  Command |  DFT-FD  |  DFTB-FD |  DFT-MD  | DFTB-MD  |   
 |----------|----------|----------|----------|----------|
 |    -w    |    1     |     2    |     3    |     4    | 
+|    -r    |   False  |    False |   False  |   False  |
+|    -p    | False    |    False |   N/A    |   N/A    | 
+|    -nvt  |   N/A    |    N/A   |   False  |   False  |
+|    -nve  |   N/A    |    N/A   |   False  |   False  |
+|    -o    |   False  |    False |   False  |   False  |
 |    -l    |    f     |    N/A   |     f    |   N/A    |  
 |    -g    |    t     |    N/A   |     t    |    N/A   | 
 |    -H    | [8,32,8] |    N/A   | [8,32,8] |    N/A   |  
@@ -51,7 +56,12 @@ There are 2 methods simulating phonon spectrum and convert into inelastic neutro
 |    -n2   |    N/A   |   N/A    |   4000   |   4000   |
 |    -step |    N/A   |   N/A    |    10    |    10    |
 
+4. Usage:
 
+Simulation using dftb-fd method for relaxation,
+```
+dcsflow -w 2 -r
+```
 
 ## Theory
 
