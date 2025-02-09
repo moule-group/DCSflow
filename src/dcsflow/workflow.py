@@ -47,10 +47,12 @@ class Dftfd:
         mesh (list): Mesh size for Phonopy eigenvector problems. (Defaults to [8,8,8])
         supercell: Supercell size. (Defaults to [2,2,2])
     """
-    def __init__(self, local, gpu, hpc, kpts, disp, fmax, mesh, supercell):
+    def __init__(self, account, local, gpu, hpc, time, kpts, disp, fmax, mesh, supercell):
+        self.account = account
         self.local = local
         self.gpu = gpu
         self.hpc = hpc 
+        self.time = time
         self.kpts = kpts   
         self.disp = disp
         self.fmax = fmax
@@ -71,10 +73,35 @@ class Dftfd:
                 ut.print_error("CIF file not found in the current directory. Exiting.") 
                 sys.exit(1)  # Exit the script with an error
             va.dft(self.disp, self.fmax, self.kpts, atoms=atom, mode=1)
-            if local:
+
+            if self.local:
                 subprocess.run('vasp_std > relax.out', shell=True) # Run VASP on local machine
-            if gpu:
-                subprocess.run(f'srun -n {self.hpc[0]} -c {self.hpc[1]} -G {self.hpc[2]} --cpu-bind=cores --gpu-bind=none vasp_std > relax.out', shell=True) # Run VASP on hpc gpu nodes
+
+            if self.gpu:
+                slurm_script = ["#!/bin/bash\n",
+                f"#SBATCH -A {self.account}\n", 
+                "#SBATCH -C gpu\n",
+                "#SBATCH -q regular\n",
+                "#SBATCH -N 2\n",
+                f"#SBATCH -t {self.time}\n",
+                "#SBATCH -J vasp_relax\n",
+                "#SBATCH -o vasp_relax-%j.out\n",
+                "#SBATCH -e vasp_relax-%j.err\n",
+                "\n",
+                "module load vasp/6.4.3-gpu\n",
+                "\n",
+                "export OMP_NUM_THREADS=1\n",
+                "export OMP_PLACES=threads\n",
+                "export OMP_PROC_BIND=spread\n",
+                "\n",
+                f"srun -n {self.hpc[0]} -c {self.hpc[1]} -G {self.hpc[2]} --cpu-bind=cores --gpu-bind=none vasp_std"
+                ]
+                slurm_filename = "vasp_relax.slurm"
+                with open(slurm_filename, "w") as f:
+                    f.writelines(slurm_script)
+                subprocess.run(f"sbatch {slurm_filename}", shell=True)
+                print("VASP relaxation job submitted!")
+
             else:
                 subprocess.run(f'srun -n {self.hpc[0]} -c {self.hpc[1]} --cpu-bind=cores vasp_std > relax.out', shell=True) # Run VASP on hpc cpu nodes
             os.chdir(self.main_path)
@@ -121,11 +148,36 @@ class Dftfd:
                     os.chdir(os.path.join(self.main_path, '2-phonons', d))
                     atom = ase.io.read(getGeometry(geo))
                     va.dft(self.disp, self.fmax, kpts=ph_kpts, atoms=atom, mode=2)
-                    if not os.path.exists(geo+'vasprun.xml'):
-                        if local:
+                    if not os.path.exists(os.path.join(self.main_path, '2-phonons', d, 'vasprun.xml')):
+
+                        if self.local:
                             subprocess.run('vasp_std > phonon.out', shell=True) # Run VASP on local machine
-                        if gpu:
-                            subprocess.run(f'srun -n {self.hpc[0]} -c {self.hpc[1]} -G {self.hpc[2]} --cpu-bind=cores --gpu-bind=none vasp_std > phonon.out', shell=True) # Run VASP on hpc gpu nodes
+
+                        if self.gpu:
+                            slurm_script = ["#!/bin/bash\n",
+                            f"#SBATCH -A {self.account}\n", 
+                            "#SBATCH -C gpu\n",
+                            "#SBATCH -q regular\n",
+                            "#SBATCH -N 2\n",
+                            f"#SBATCH -t {self.time}\n",
+                            "#SBATCH -J vasp_phonon\n",
+                            "#SBATCH -o vasp_phonon-%j.out\n",
+                            "#SBATCH -e vasp_phonon-%j.err\n",
+                            "\n",
+                            "module load vasp/6.4.3-gpu\n",
+                            "\n",
+                            "export OMP_NUM_THREADS=1\n",
+                            "export OMP_PLACES=threads\n",
+                            "export OMP_PROC_BIND=spread\n",
+                            "\n",
+                            f"srun -n {self.hpc[0]} -c {self.hpc[1]} -G {self.hpc[2]} --cpu-bind=cores --gpu-bind=none vasp_std" 
+                            ]
+                            slurm_filename = "vasp_phonon.slurm"
+                            with open(slurm_filename, "w") as f:
+                                f.writelines(slurm_script)
+                            subprocess.run(f"sbatch {slurm_filename}", shell=True)
+                            print("VASP phonon job submitted!")
+
                         else:
                             subprocess.run(f'srun -n {self.hpc[0]} -c {self.hpc[1]} --cpu-bind=cores vasp_std > phonon.out', shell=True) # Run VASP on hpc cpu nodes
                     
@@ -246,10 +298,12 @@ class Dftmd:
     teend (float): The final temperature for MD simulation, Defaults to 150K. this is useful when training MLFF using NPT-MD
     """
 
-    def __init__(self, local, gpu, hpc, kpts, disp, max, nsw1, nsw2, steps, supercell, tebeg, teend):
+    def __init__(self, account, local, gpu, hpc, time, kpts, disp, max, nsw1, nsw2, steps, supercell, tebeg, teend):
+        self.account = account
         self.local = local
         self.gpu = gpu
         self.hpc = hpc
+        self.time = time
         self.kpts = kpts
         self.disp = disp
         self.fmax = fmax
@@ -274,10 +328,35 @@ class Dftmd:
                 ut.print_error("CIF file not found in the current directory. Exiting.") 
                 sys.exit(1)  # Exit the script with an error
             va.dft(self.disp, self.fmax, self.kpts, atoms=atom, mode='relax')
+
             if local:
                 subprocess.run('vasp_std > relax.out', shell=True) # Run VASP on local machine
-            if gpu:
-                subprocess.run(f'srun -n {self.hpc[0]} -c {self.hpc[1]} -G {self.hpc[2]} --cpu-bind=cores --gpu-bind=none vasp_std > relax.out', shell=True) # Run VASP on hpc gpu nodes
+
+            if self.gpu:
+                slurm_script = ["#!/bin/bash\n",
+                f"#SBATCH -A {self.account}\n", 
+                "#SBATCH -C gpu\n",
+                "#SBATCH -q regular\n",
+                "#SBATCH -N 2\n",
+                f"#SBATCH -t {self.time}\n",
+                "#SBATCH -J vasp_relax\n",
+                "#SBATCH -o vasp_relax-%j.out\n",
+                "#SBATCH -e vasp_relax-%j.err\n",
+                "\n",
+                "module load vasp/6.4.3-gpu\n",
+                "\n",
+                "export OMP_NUM_THREADS=1\n",
+                "export OMP_PLACES=threads\n",
+                "export OMP_PROC_BIND=spread\n",
+                "\n",
+                f"srun -n {self.hpc[0]} -c {self.hpc[1]} -G {self.hpc[2]} --cpu-bind=cores --gpu-bind=none vasp_std" 
+                ]
+                slurm_filename = "vasp_relax.slurm"
+                with open(slurm_filename, "w") as f:
+                    f.writelines(slurm_script)
+                subprocess.run(f"sbatch {slurm_filename}", shell=True)
+                print("VASP relaxation job submitted!")
+            
             else:
                 subprocess.run(f'srun -n {self.hpc[0]} -c {self.hpc[1]} --cpu-bind=cores vasp_st > relax.out', shell=True) # Run VASP on hpc cpu nodes
         
@@ -297,10 +376,35 @@ class Dftmd:
             atom = ase.io.read(os.path.join(self.main_path,'1-relax','CONTCAR'))
             atom *= self.supercell
             va.md(self.disp,self.nsw1,self.tebeg,self.teend,kpts=md_kpts,atoms=atom,ensemble=1)
+
             if local:
                 subprocess.run('vasp_std > nvtmd.out', shell=True) # Run VASP on local machine
-            if gpu:
-                subprocess.run(f'srun -n {self.hpc[0]} -c {self.hpc[1]} -G {self.hpc[2]} --cpu-bind=cores --gpu-bind=none vasp_std > nvtmd.out', shell=True) # Run VASP on hpc gpu nodes
+
+            if self.gpu:
+                slurm_script = ["#!/bin/bash\n",
+                f"#SBATCH -A {self.account}\n",
+                "#SBATCH -C gpu\n",
+                "#SBATCH -q regular\n",
+                "#SBATCH -N 2\n",
+                f"#SBATCH -t {self.time}\n",
+                "#SBATCH -J vasp_nvtmd\n",
+                "#SBATCH -o vasp_nvtmd-%j.out\n",
+                "#SBATCH -e vasp_nvtmd-%j.err\n",
+                "\n",
+                "module load vasp/6.4.3-gpu\n",
+                "\n",
+                "export OMP_NUM_THREADS=1\n",
+                "export OMP_PLACES=threads\n",
+                "export OMP_PROC_BIND=spread\n",
+                "\n",
+                f"srun -n {self.hpc[0]} -c {self.hpc[1]} -G {self.hpc[2]} --cpu-bind=cores --gpu-bind=none vasp_std"
+                ]
+                slurm_filename = "vasp_nvtmd.slurm"
+                with open(slurm_filename, "w") as f:
+                    f.writelines(slurm_script)
+                subprocess.run(f"sbatch {slurm_filename}", shell=True)
+                print("VASP NVTMD job submitted!")
+
             else:
                 subprocess.run(f'srun -n {self.hpc[0]} -c {self.hpc[1]} --cpu-bind=cores vasp_std > nvtmd.out', shell=True) # Run VASP on hpc cpu nodes
 
@@ -325,10 +429,35 @@ class Dftmd:
                 os.makedirs(os.path.join(self.main_path, "3-nvemd", str(i+1)), exist_ok=True)
                 os.chdir(os.path.join(self.main_path, "3-nvemd", str(i+1)))
                 va.md(self.disp,self.nsw2,self.temp,kpts=md_kpts,atoms=atom,ensemble=2)
+
                 if local:
                     subprocess.run('vasp_std > nvemd.out', shell=True) # Run VASP on local machine
-                if gpu:
-                    subprocess.run(f'srun -n {self.hpc[0]} -c {self.hpc[1]} -G {self.hpc[2]} --cpu-bind=cores --gpu-bind=none vasp_std > nvemd.out', shell=True) # Run VASP on hpc gpu nodes
+
+                if self.gpu:
+                    slurm_script = ["#!/bin/bash\n",
+                    f"#SBATCH -A {self.account}\n",
+                    "#SBATCH -C gpu\n",
+                    "#SBATCH -q regular\n",
+                    "#SBATCH -N 2\n",
+                    f"#SBATCH -t {self.time}\n",
+                    "#SBATCH -J vasp_nvemd\n",
+                    "#SBATCH -o vasp_nvemd-%j.out\n",
+                    "#SBATCH -e vasp_nvemd-%j.err\n",
+                    "\n",
+                    "module load vasp/6.4.3-gpu\n",
+                    "\n",
+                    "export OMP_NUM_THREADS=1\n",
+                    "export OMP_PLACES=threads\n",
+                    "export OMP_PROC_BIND=spread\n",
+                    "\n",
+                    "srun -n {self.hpc[0]} -c {self.hpc[1]} -G {self.hpc[2]} --cpu-bind=cores --gpu-bind=none vasp_std" 
+                    ]
+                    slurm_filename = "vasp_nvemd.slurm"
+                    with open(slurm_filename, "w") as f:
+                        f.writelines(slurm_script)
+                    subprocess.run(f"sbatch {slurm_filename}", shell=True)
+                    print("VASP NVEMD job submitted!")
+
                 else:
                     subprocess.run(f'srun -n {self.hpc[0]} -c {self.hpc[1]} --cpu-bind=cores vasp_std > nvemd.out', shell=True) # Run VASP on hpc cpu nodes
                 os.chdir('..')

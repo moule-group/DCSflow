@@ -27,20 +27,23 @@ def load_frames(frame_filename, iter_from=0):
     """
     frames = []
     with open(frame_filename, "r") as f:
-        lines = []    
-        header = f.readline() 
-        try:
-            natoms = int(header) # find the number of atoms
-        except ValueError as e:
-            raise ValueError('Expected xyz header but got: {}'.format(e))
-
-        lines.append(header)
-        comment = f.readline()
-        iter_number = int(comment[comment.find('iter:') + 5:].split()[0]) + 0
-        lines.append(f"iter:{iter_number} \n")
-        for i in range(natoms):
-            lines.append(f.readline())
-        frames.append(lines)
+        while True:
+            lines = []
+            header = f.readline()
+            if header.strip() == '':
+                break
+            try:
+                natoms = int(header)
+            except ValueError as e:
+                raise ValueError('Expected xyz header but got: {}'.format(e))
+            lines.append(header)
+            comment = f.readline()
+            iter_number = int(comment[comment.find('iter:') + 5:].split()[0]) + iter_from
+            lines.append(f"iter:{iter_number}\n")
+            for i in range(natoms):
+                lines.append(f.readline())
+            frames.append(lines)
+    return frames
 
 def get_iter_from_frame(frame):
     """ Get MD iteration number from given xyz frame index
@@ -62,7 +65,7 @@ def collect(steps):
 
     root, dirs, files = next(os.walk(os.path.join(main_path, "3-nvemd"))) # Walk through all folders in 3-nvemd
     i = 1
-    for d in dirs:
+    for d in sorted(dirs): # make sure the order is correct (a,b,c, ...)
         if len(d) <= 2:
             os.chdir(os.path.join(main_path, "3-nvemd", d))
             iter_from = load_iter_range("iter_range.txt")["from"] # Append frames
