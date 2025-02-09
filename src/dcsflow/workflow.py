@@ -8,30 +8,15 @@ import glob
 import subprocess
 import shutil
 import sys
+import string
+import re
 import dcsflow.vasp as va
 import dcsflow.dftb as db
 import dcsflow.phonons as ph
 import dcsflow.oclimax as ocl
-import dcsflow.restart_dftbmd as re
+import dcsflow.restart_dftbmd as rd
 import dcsflow.restart_collector as rc
-
-def print_error(message):
-    """ printing the error message 
-    Args:
-    message (str): The error message
-    """
-    print(" ----------------------------------------------------------------- ")
-    print("""
-    #           #
-      #       #
-        #   #
-          #
-        #   #
-      #       #
-    #           #
-    """)
-    print(message)
-    print(time.ctime())
+import dcsflow.utils as ut
 
 def getGeometry(path):
     """ Using glob function in python to find the structure
@@ -77,13 +62,13 @@ class Dftfd:
         """ Optimization using VASP DFT
         """
         if not os.path.exists(os.path.join(self.main_path, "1-relax" ,"CONTCAR")): # Check whether the relaxation simulation is finished. 
-            print(" Writing VASP input files! ")
+            print(" Relaxation! ")
             os.makedirs(os.path.join(self.main_path, "1-relax"), exist_ok=True)
             os.chdir(os.path.join(self.main_path, "1-relax")) # Change directory to 1-relax 
             try:
                 atom = ase.io.read(getGeometry(self.main_path))
             except FileNotFoundError:
-                print_error("CIF file not found in the current directory. Exiting.") 
+                ut.print_error("CIF file not found in the current directory. Exiting.") 
                 sys.exit(1)  # Exit the script with an error
             va.dft(self.disp, self.fmax, self.kpts, atoms=atom, mode=1)
             if local:
@@ -108,11 +93,12 @@ class Dftfd:
             os.makedirs(dst, exist_ok=True)
             os.chdir(dst)
             if not os.path.exists(src):
-                print_error(f"Structure file '{src}' is missing. Exiting.")
+                ut.print_error(f"Structure file '{src}' is missing. Exiting.")
                 sys.exit(1) # Exit the function if the source file is missing
             shutil.copy(src, dst+'POSCAR')
         
             ph.displace_structure(calc='vasp', supercell=[2,2,2]) # Create displaced POSCAR files by Phonopy
+            print(" Displaced structures are created! ")
             root, dirs, files = next(os.walk(dst))
         
             for file in files:
@@ -126,7 +112,8 @@ class Dftfd:
                 new_file = "POSCAR"  # Rename the file to 'POSCAR'
                 destination = os.path.join(folder_path, new_file)
                 shutil.move(source, destination) # Move the file into the corresponding folder
-                
+
+            print(" Single point energy calculation using VASP for each displaced structure! ")    
             root2, dirs2, files2 = next(os.walk(dst)) # Loop through every sub-folder in 2-phonons to write VASP input files and run script
             for d in dirs2:
                 if len(d) <= 3:
@@ -145,7 +132,7 @@ class Dftfd:
                     os.chdir('..')
          
         ph.get_force_sets(calc='vasp')
-        ph.run_mesh(mesh)
+        ph.run_mesh(self.mesh)
     
     def oclimax(self):
         """ oclimax simulation
@@ -175,13 +162,13 @@ class Dftbfd:
         """ Relaxation using DFTB+
         """
         if not os.path.exists(os.path.join(self.main_path, "1-relax", "geo_end.gen")): # Check whether the relaxation simulation is finished. 
-            print(" Writing DFTB+ input files! ")
+            print(" Relaxation! ")
             os.makedirs(os.path.join(self.main_path, "1-relax"), exist_ok=True)
             os.chdir(os.path.join(self.main_path, "1-relax")) # Change directory to 1-relax
             try:
                 atom = ase.io.read(getGeometry(self.main_path))
             except FileNotFoundError:
-                print_error("CIF file not found in the current directory. Exiting.") 
+                ut.print_error("CIF file not found in the current directory. Exiting.") 
                 sys.exit(1)  # Exit the script with an error
             db.relax(self.disp,self.fmax,self.kpts,atoms=atom)
             subprocess.run('ulimit -s unlimited', shell=True)
@@ -201,11 +188,12 @@ class Dftbfd:
             os.makedirs(dst, exist_ok=True)
             os.chdir(dst)
             if not os.path.exists(src):
-                print_error(f"Structure file '{src}' is missing. Exiting.")
+                ut.print_error(f"Structure file '{src}' is missing. Exiting.")
                 sys.exit(1) # Exit the function if the source file is missing
             shutil.copy(src, dst)
         
             ph.displace_structure(calc='dftbp', supercell=[2,2,2]) # Create displaced geo.genS files
+            print(" Displaced structures are created! ")
             root, dirs, files = next(os.walk(dst))
         
             for file in files:
@@ -219,7 +207,8 @@ class Dftbfd:
                 new_file = "geo_end.gen"  # Rename the file to 'geo_end.gen'
                 destination = os.path.join(folder_path, new_file)
                 shutil.move(source, destination) # Move the file into the corresponding folder
-        
+
+            print(" Single point energy calculation using DFTB+ for each displaced structure! ")
             root2, dirs2, files2 = next(os.walk(dst))
             for d in dirs2:
                 if len(d) <= 3:
@@ -232,7 +221,7 @@ class Dftbfd:
                     os.chdir('..')
         
         ph.get_force_sets(calc='dftbp')
-        ph.run_mesh(mesh)
+        ph.run_mesh(self.mesh)
 
     def oclimax(self):
         """ oclimax simulation
@@ -276,13 +265,13 @@ class Dftmd:
         """ Relaxation using VASP DFT
         """
         if not os.path.exists(os.path.join(self.main_path, "1-relax", "CONTCAR")): # Check whether the relaxation simulation is finished. 
-            print(" Writing VASP input files! ")
+            print(" Relaxation! ")
             os.makedirs(os.path.join(self.main_path, "1-relax"), exist_ok=True)
             os.chdir(os.path.join(self.main_path, "1-relax")) # Change directory to 1-relax
             try:
                 atom = ase.io.read(getGeometry(self.main_path))
             except FileNotFoundError:
-                print_error("CIF file not found in the current directory. Exiting.") 
+                ut.print_error("CIF file not found in the current directory. Exiting.") 
                 sys.exit(1)  # Exit the script with an error
             va.dft(self.disp, self.fmax, self.kpts, atoms=atom, mode='relax')
             if local:
@@ -302,10 +291,11 @@ class Dftmd:
         """
         md_kpts = [1,1,1] # The kpoints for MD simulation
         if not os.path.exists(os.path.join(self.main_path, "2-nvtmd", "vasprun.xml")):
-            print(" Writing VASP input files! ")
+            print(" NVT-MD simulation! ")
             os.makedirs(os.path.join(self.main_path, "2-nvtmd"), exist_ok=True)
+            os.chdir(os.path.join(self.main_path, "2-nvtmd"))
             atom = ase.io.read(os.path.join(self.main_path,'1-relax','CONTCAR'))
-            atom *= supercell
+            atom *= self.supercell
             va.md(self.disp,self.nsw1,self.tebeg,self.teend,kpts=md_kpts,atoms=atom,ensemble=1)
             if local:
                 subprocess.run('vasp_std > nvtmd.out', shell=True) # Run VASP on local machine
@@ -320,15 +310,17 @@ class Dftmd:
     def nvemd(self):
         """ NVE-MD simulation
         """
+        md_kpts = [1,1,1]
         if not os.path.exists(os.path.join(self.main_path, "3-nvemd")):
-            print(" Writing VASP input files! ")
+            print(" NVE-MD simulation! ")
             os.makedirs(os.path.join(self.main_path, "3-nvemd"), exist_ok=True)
             atom = ase.io.read(os.path.join(self.main_path,'2-nvtmd','CONTCAR'))
             os.makedirs(os.path.join(self.main_path, "3-nvemd", "1"), exist_ok=True)
+            os.chdir(os.path.join(self.main_path, "3-nvemd", "1"))
             va.md(self.disp,self.nsw2,self.tebeg,self.teend,kpts=md_kpts,atoms=atom,ensemble=2)
             subprocess.run('vasp_std > nvemd.out', shell=True)
             os.chdir('..')
-            for i in range(1,steps):
+            for i in range(1,self.steps):
                 atom = ase.io.read('3-nvemd/'+str(i)+'/CONTCAR')
                 os.makedirs(os.path.join(self.main_path, "3-nvemd", str(i+1)), exist_ok=True)
                 os.chdir(os.path.join(self.main_path, "3-nvemd", str(i+1)))
@@ -364,28 +356,28 @@ class Dftbmd:
     temp (float): The temperature for MD simulation, Defaults to 150K
     """
 
-def __init__(kpts,disp,fmax,nsw1,nsw2,steps,supercell,temp):
-    self.kpts = kpts    
-    self.disp = disp
-    self.fmax = fmax
-    self.nsw1 = nsw1
-    self.nsw2 = nsw2
-    self.steps = steps
-    self.supercell = supercell
-    self.temp = temp
-    self.main_path = os.getcwd()
+    def __init__(self, kpts, disp, fmax, nsw1, nsw2, steps, supercell, temp):
+        self.kpts = kpts    
+        self.disp = disp
+        self.fmax = fmax
+        self.nsw1 = nsw1
+        self.nsw2 = nsw2
+        self.steps = steps
+        self.supercell = supercell
+        self.temp = temp
+        self.main_path = os.getcwd()
     
     def relax(self):
         """ Relaxation using DFTB+
         """
         if not os.path.exists(os.path.join(self.main_path, "1-relax", "geo_end.gen")): # Check whether the relaxation simulation is finished. 
-            print(" Writing DFTB+ input files! ")
+            print(" Relaxation! ")
             os.makedirs(os.path.join(self.main_path, "1-relax"), exist_ok=True)
             os.chdir(os.path.join(self.main_path, "1-relax")) # Change directory to 1-relax
             try:
                 atom = ase.io.read(getGeometry(self.main_path))
             except FileNotFoundError:
-                print_error("CIF file not found in the current directory. Exiting.")
+                ut.print_error("CIF file not found in the current directory. Exiting.")
                 sys.exit(1)  # Exit the script with an error
             db.relax(self.disp,self.fmax,self.kpts,atoms=atom)
             subprocess.run('ulimit -s unlimited', shell=True)
@@ -399,11 +391,16 @@ def __init__(kpts,disp,fmax,nsw1,nsw2,steps,supercell,temp):
         """
         md_kpts = [1,1,1]
         if not os.path.exists(os.path.join(self.main_path, "2-nvtmd", "nvt.out")): # Check whether the nvtmd simulation is finished.
+            print(" NVT-MD simulation! ")
             os.makedirs(os.path.join(self.main_path, "2-nvtmd"), exist_ok=True)
+            os.chdir(os.path.join(self.main_path, "2-nvtmd"))
             atom = ase.io.read(os.path.join(self.main_path, '1-relax', 'geo_end.gen'))
-            atom *= supercell
+            atom *= self.supercell
             db.md(self.disp,self.nsw1,self.temp,kpts=md_kpts,atoms=atom,ensemble=1)
-            subprocess.run('dftb+ > md.out', shell=True)
+            subprocess.run('dftb+ > nvtmd.out', shell=True)
+            rd.make_files(max_iter=0,extra_files=[],output_dir=None,
+                        self_copy=False,write_over=False,force_restart=False,
+                        restart_from=-1)
                               
         else:
             print(" The NVT-MD simulation is already finished!!! ")
@@ -411,37 +408,51 @@ def __init__(kpts,disp,fmax,nsw1,nsw2,steps,supercell,temp):
     def nvemd(self):
         """ NVE-MD simulation
         """ 
-        if not os.path.exists(os.path.join(self.main_path, "3-nvemd", "f{steps}")):
-            print(" Writing DFTB+ input files! ")
+        md_kpts = [1,1,1]
+        letters = list(string.ascii_lowercase) # Naming the folders with letters
+        if not os.path.exists(os.path.join(self.main_path, "3-nvemd", "f{self.steps}")):
+            print(" NVE-MD simulation! ")
             os.makedirs(os.path.join(self.main_path, "3-nvemd"), exist_ok=True) # Here we will create subfolders for NVE-MD simulation.
-            atom = ase.io.read(os.path.join(self.main_path,'2-nvtmd','geo_end.gen'))
-            os.makedirs(os.path.join(self.main_path, "3-nvemd", "1"), exist_ok=True)
-            db.md(self.disp,self.nsw2,self.temp,kpts=md_kpts,atoms=atom,ensemble=2)
-            subprocess.run('dftb+ > nve.out', shell=True)
-            re.make_files(max_iter,extra_files,output_dir,
-                        self_copy,write_over,force_restart,
-                        restart_from)
+            src = os.path.join(self.main_path, "2-nvtmd", "restart") # source folder
+            dst = os.path.join(self.main_path, "3-nvemd", "a") # destination folder
+            shutil.copytree(src, dst)
+            os.chdir(os.path.join(self.main_path, "3-nvemd", "a"))
+            with open("dftb_in.hsd", "r") as f1:
+                data = f1.read()
+            
+            data = re.sub(
+                    r"Thermostat\s*\{[^{}]*\{[\s\S]*?\}[\s\S]*?\}",  # Match entire "Thermostat { ... }" with nested braces
+                    "Thermostat {None{}",  # Replace with an empty Thermostat block, this is for NVE-MD simulation
+                    data,
+                    flags=re.MULTILINE
+                )
+            data = re.sub(
+                    r"Steps\s*=\s*\d+",  # Match "Steps = <number>"
+                    f"Steps = {self.nsw2}",  # Replace with the desired number
+                    data
+                    )
+            with open("dftb_in.hsd", "w") as f2:
+                f2.write(data)
+
+            subprocess.run('dftb+ > nvemd.out', shell=True)
+            rd.make_files(max_iter=0,extra_files=[],output_dir=None,
+                        self_copy=False,write_over=False,force_restart=False,
+                        restart_from=-1)
             os.chdir('..')
-            for i in range(1,steps):
-                src = os.path.join(self.main_path, "3-nvemd", str(i), 'restart') # source folder
-                dst = os.path.join(self.main_path, "3-nvemd", str(i+1)) # destination folder
-                shutil.copytree(src, dst)
-                os.chdir(os.path.join(self.main_path, "3-nvemd", str(i+1)))
-                subprocess.run('dftb+ > md.out', shell=True)
-                re.make_files(max_iter,extra_files,output_dir,
-                            self_copy,write_over,force_restart,
-                            restart_from)
+
+            for i in range(0,self.steps-1): # We separate the NVE-MD simulation into multiple folders
+                src_ = os.path.join(self.main_path, "3-nvemd", letters[i], 'restart') # source folder
+                dst_ = os.path.join(self.main_path, "3-nvemd", letters[i+1]) # destination folder
+                shutil.copytree(src_, dst_)
+                os.chdir(os.path.join(self.main_path, "3-nvemd", letters[i+1]))
+                subprocess.run('dftb+ > nvemd.out', shell=True)
+                rd.make_files(max_iter=0,extra_files=[],output_dir=None,
+                            self_copy=False,write_over=False,force_restart=False,
+                            restart_from=-1)
                 os.chdir('..')
 
             # Have to collect the trajectory files and put it together.
-            rc.collect(extra_files,
-                    output_dirname,
-                    input_dirname,
-                    properties,
-                    lattice,
-                    add_mode,
-                    consequtive
-                    )
+            rc.collect(steps=self.steps)
 
         else:
             print(" The NVE-MD simulation is already finished!!! ")

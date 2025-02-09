@@ -58,8 +58,8 @@ There are 2 methods simulating phonon spectrum and convert into inelastic neutro
 
 4. Usage:
 
-Simulation using dftb-fd method for relaxation,
-```
+Simulation using dftb-fd method for relaxation, must specify -w --workflow to 2 and set -r.
+``` 
 dcsflow -w 2 -r
 ```
 

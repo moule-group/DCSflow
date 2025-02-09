@@ -1,8 +1,8 @@
 import os
 import argparse
-import matplotlib.pyplot as plt
 import glob
 from shutil import copyfile
+import dcsflow.utils as ut
 
 def write_params(task, e_unit):
     """
@@ -110,31 +110,34 @@ def oclimax(dt,params,task,e_unit,mode):
     main_path = os.getcwd()
 
     if mode == 1:
-        os.makedirs(folder + '/3-oclimax', exist_ok=True)
+        os.makedirs(main_path + '/3-oclimax', exist_ok=True)
         try:
-            copyfile(folder + '/2-phonons/mesh.yaml', folder + '/3-oclimax/mesh.yaml')
+            copyfile(main_path + '/2-phonons/mesh.yaml', main_path + '/3-oclimax/mesh.yaml')
         except:
-            print("mesh.yaml file not found in 2-phonons folder")
+            ut.print_error("mesh.yaml file is not found")
+            raise FileNotFoundError
     if mode == 2:
-        os.makedirs(folder + '/4-oclimax', exist_ok=True)
+        os.makedirs(main_path + '/4-oclimax', exist_ok=True)
         try:
-            copyfile(folder + '/3-nvemd/XDATCAR', folder + '/4-oclimax/XDATCAR')
+            copyfile(main_path + '/3-nvemd/XDATCAR', main_path + '/4-oclimax/XDATCAR')
         except:
-            print("XDATCAR file not found in 3-nvemd folder.")
+            ut.print_error("XDATCAR file is not found.")
+            raise FileNotFoundError
     if mode == 3:
-        os.makedirs(folder + '/4-oclimax', exist_ok=True)
+        os.makedirs(main_path + '/4-oclimax', exist_ok=True)
         try:
-            copyfile(folder + '/3-nvemd/geo_end.xyz', folder + '/4-oclimax/geo_end.xyz')
+            copyfile(main_path + '/3-nvemd/geo_end.xyz', main_path + '/4-oclimax/geo_end.xyz')
         except:
-            print("geo_end.xyz file not found in 3-nvemd folder.")
+            ut.print_error("geo_end.xyz file is not found.")
+            raise FileNotFoundError
     #if mode == 4:
     #    os.mkdir(folder + '/4-oclimax')       
     #    copyfile(folder + '/1-md/velocity.dump', folder + '/3-oclimax/velocity.dump')
 
     if mode == 1:
-        os.chdir(folder + '/3-oclimax')
+        os.chdir(main_path + '/3-oclimax')
     else:
-        os.chdir(folder + '/4-oclimax')
+        os.chdir(main_path + '/4-oclimax')
     
     if not params:
         write_params(task, e_unit)

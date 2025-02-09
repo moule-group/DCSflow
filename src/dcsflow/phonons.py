@@ -3,6 +3,7 @@
 import os
 import numpy as np
 import phonopy
+import subprocess
 from phonopy import Phonopy
 from phonopy.interface.calculator import read_crystal_structure
 from phonopy.interface.calculator import write_supercells_with_displacements

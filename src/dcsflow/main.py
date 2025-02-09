@@ -1,32 +1,6 @@
 from dcsflow.workflow import Dftfd, Dftbfd, Dftmd, Dftbmd
+import dcsflow.utils as ut
 import argparse
-import time
-
-def print_start():
-    """ printing the start of the DCS-Flow"""
-    print(" ----------------------------------------------------------------- ")
-    print(" Starting Davis Computation Spectroscopy Flow (DCS-Flow)  !!! ")
-    print(" Made by Moule Group at UC Davis (version: 0.1.0) ")
-    print(" #########  ##########   #######                ")
-    print(" $       $  $            $        ")
-    print(" $      $   $            #######           ")
-    print(" $     $    $                  $  ")
-    print(" ######     ##########   #######  ")
-    print(time.ctime())
-
-def print_end():
-    """ printing the end of the DCS-Flow """
-    print(" ----------------------------------------------------------------- ")
-    print(
-    """                 
-    #########  ##    #  #########
-    $          # #   #  $       $
-    ########   #  #  #  $      $
-    $          #   # #  $     $ 
-    #########  #    ##  ######
-    """
-    )
-    print(time.ctime())
 
 def main():
     """ The main function to run the DCS-Flow 
@@ -53,114 +27,170 @@ def main():
     parser.add_argument("-step", "--steps", type=int, default=10, help="Multiple of NVE-MD steps; (i.e. 4000*steps is the total steps for NVE-MD) Defaults to 10!") # Add an argument: steps
     args = parser.parse_args() # Parse the argument
 
-    print_start() # Print the start of the DCS-Flow
+    ut.print_start() # Print the start of the DCS-Flow
 
     if args.workflow == 1:
         dftfd = Dftfd(local=args.local, gpu=args.gpu, hpc=args.hpc, kpts=args.kpts, disp=args.dispersion, 
                       fmax=args.force, mesh=args.mesh, supercell=args.supercell)
         if args.relax:
-            print(" ----------------------------------------------------------------- ")
-            print(" 1st flow: DFT-FD: RELAXATION --> (Phonon) --> (Oclimax) ")
-            print(" ----------------------------------------------------------------- ")
-            dftfd.relax()
-            print_end()
+            try:
+                print(" ----------------------------------------------------------------- ")
+                print(" 1st flow: DFT-FD: RELAXATION --> (Phonon) --> (Oclimax) ")
+                print(" ----------------------------------------------------------------- ")
+                dftfd.relax()
+                ut.print_end()
+            except KeyboardInterrupt:
+                ut.print_error("Interrupted by user!")
+                sys.exit(0)
         
         if args.phonon:
-            print(" ----------------------------------------------------------------- ")
-            print(" 1st flow: DFT-FD: (Relaxation) --> PHONON --> (Oclimax) ")
-            print(" ----------------------------------------------------------------- ")
-            dftfd.phonons() 
-            print_end()
+            try:
+                print(" ----------------------------------------------------------------- ")
+                print(" 1st flow: DFT-FD: (Relaxation) --> PHONON --> (Oclimax) ")
+                print(" ----------------------------------------------------------------- ")
+                dftfd.phonons() 
+                ut.print_end()
+            except KeyboardInterrupt:
+                ut.print_error("Interrupted by user!")
+                sys.exit(0)
 
         if args.oclimax:
-            print(" ----------------------------------------------------------------- ")
-            print(" 1st flow: DFT-FD: (Relaxation) --> (Phonon) --> OCLIMAX ")
-            print(" ----------------------------------------------------------------- ")
-            dftfd.oclimax()
-            print_end()
+            try:
+                print(" ----------------------------------------------------------------- ")
+                print(" 1st flow: DFT-FD: (Relaxation) --> (Phonon) --> OCLIMAX ")
+                print(" ----------------------------------------------------------------- ")
+                dftfd.oclimax()
+                ut.print_end()
+            except KeyboardInterrupt:
+                ut.print_error("Interrupted by user!")
+                sys.exit(0)
     
     if args.workflow == 2:
         dftbfd = Dftbfd(kpts=args.kpts, disp=args.dispersion, fmax=args.force, mesh=args.mesh, supercell=args.supercell)
         if args.relax:
-            print(" ----------------------------------------------------------------- ")
-            print(" 2nd flow: DFTB-FD: RELAXATION --> (Phonon) --> (Oclimax) ")
-            print(" ----------------------------------------------------------------- ")
-            dftbfd.relax()
-            print_end()
+            try:
+                print(" ----------------------------------------------------------------- ")
+                print(" 2nd flow: DFTB-FD: RELAXATION --> (Phonon) --> (Oclimax) ")
+                print(" ----------------------------------------------------------------- ")
+                dftbfd.relax()
+                ut.print_end()
+            except KeyboardInterrupt:
+                ut.print_error("Interrupted by user!")
+                sys.exit(0)
 
         if args.phonon:
-            print(" ----------------------------------------------------------------- ")
-            print(" 2nd flow: DFTB-FD: (Relaxation) --> PHONON --> (Oclimax) ")
-            print(" ----------------------------------------------------------------- ")
-            dftbfd.phonons()
-            print_end()
+            try:
+                print(" ----------------------------------------------------------------- ")
+                print(" 2nd flow: DFTB-FD: (Relaxation) --> PHONON --> (Oclimax) ")
+                print(" ----------------------------------------------------------------- ")
+                dftbfd.phonons()
+                ut.print_end()
+            except KeyboardInterrupt:
+                ut.print_error("Interrupted by user!")
+                sys.exit(0)
 
         if args.oclimax:
-            print(" ----------------------------------------------------------------- ")
-            print(" 2nd flow: DFTB-FD: (Relaxation) --> (Phonon) --> OCLIMAX ")
-            print(" ----------------------------------------------------------------- ")
-            workflow.dftbfd.oclimax()
-            print_end()
+            try:
+                print(" ----------------------------------------------------------------- ")
+                print(" 2nd flow: DFTB-FD: (Relaxation) --> (Phonon) --> OCLIMAX ")
+                print(" ----------------------------------------------------------------- ")
+                dftbfd.oclimax()
+                ut.print_end()
+            except KeyboardInterrupt:
+                ut.print_error("Interrupted by user!")
+                sys.exit(0)
         
     if args.workflow == 3: 
         dftmd = Dftmd(local=args.local, gpu=args.gpu, hpc=args.hpc, disp=args.dispersion, fmax=args.force, kpts=args.kpts, 
                       nsw1=args.nsw1, nsw2=args.nsw2, supercell=args.supercell, tebeg=args.temp1, teend=args.temp2)
         if args.relax:
-            print(" ----------------------------------------------------------------- ")
-            print(" 3rd flow: DFT-MD: RELAXATION --> (Nvt-md) --> (Nve-md) --> (Oclimax) ")  
-            print(" ----------------------------------------------------------------- ")
-            dftmd.relax()
-            print_end()
+            try:
+                print(" ----------------------------------------------------------------- ")
+                print(" 3rd flow: DFT-MD: RELAXATION --> (Nvt-md) --> (Nve-md) --> (Oclimax) ")  
+                print(" ----------------------------------------------------------------- ")
+                dftmd.relax()
+                ut.print_end()
+            except KeyboardInterrupt:
+                ut.print_error("Interrupted by user!")
+                sys.exit(0)
         
         if args.nvtmd:
-            print(" ----------------------------------------------------------------- ")
-            print(" 3rd flow: DFT-MD: (Relaxation) --> NVT-MD --> (Nve-md) --> (Oclimax) ")  
-            print(" ----------------------------------------------------------------- ")
-            dftmd.nvtmd()
-            print_end()
+            try:
+                print(" ----------------------------------------------------------------- ")
+                print(" 3rd flow: DFT-MD: (Relaxation) --> NVT-MD --> (Nve-md) --> (Oclimax) ")  
+                print(" ----------------------------------------------------------------- ")
+                dftmd.nvtmd()
+                ut.print_end()
+            except KeyboardInterrupt:
+                ut.print_error("Interrupted by user!")
+                sys.exit(0)
 
         if args.nvemd:
-            print(" ----------------------------------------------------------------- ")
-            print(" 3rd flow: DFT-MD: (Relaxation) --> (Nvt-md) --> NVE-MD --> (Oclimax) ")  
-            print(" ----------------------------------------------------------------- ")
-            dftmd.nvemd()
-            print_end()
+            try:
+                print(" ----------------------------------------------------------------- ")
+                print(" 3rd flow: DFT-MD: (Relaxation) --> (Nvt-md) --> NVE-MD --> (Oclimax) ")  
+                print(" ----------------------------------------------------------------- ")
+                dftmd.nvemd()
+                ut.print_end()
+            except KeyboardInterrupt:
+                ut.print_error("Interrupted by user!")
+                sys.exit(0)
 
         if args.oclimax:
-            print(" ----------------------------------------------------------------- ")
-            print(" 3rd flow: DFT-MD: (Relaxation) --> (Nvt-md) --> (Nve-md) --> OCLIMAX ")  
-            print(" ----------------------------------------------------------------- ")
-            dftmd.oclimax()
-            print_end()
+            try:
+                print(" ----------------------------------------------------------------- ")
+                print(" 3rd flow: DFT-MD: (Relaxation) --> (Nvt-md) --> (Nve-md) --> OCLIMAX ")  
+                print(" ----------------------------------------------------------------- ")
+                dftmd.oclimax()
+                ut.print_end()
+            except KeyboardInterrupt:
+                ut.print_error("Interrupted by user!")
+                sys.exit(0)
 
     if args.workflow == 4:
-        dftbmd = Dftbmd(disp=args.dispersion, fmax=args.force, kpts=args.kpts, nsw1=args.nsw1, 
+        dftbmd = Dftbmd(kpts=args.kpts, disp=args.dispersion, fmax=args.force, nsw1=args.nsw1, 
                     nsw2=args.nsw2, steps=args.steps, supercell=args.supercell, temp=args.temp1)
         if args.relax:
-            print(" ----------------------------------------------------------------- ")
-            print(" 4th flow: DFTB-MD: RELAXATION --> (Nvt-md) --> (Nve-md) --> (Oclimax) ")
-            print(" ----------------------------------------------------------------- ")
-            dftbmd.relax()
-            print_end()
+            try:
+                print(" ----------------------------------------------------------------- ")
+                print(" 4th flow: DFTB-MD: RELAXATION --> (Nvt-md) --> (Nve-md) --> (Oclimax) ")
+                print(" ----------------------------------------------------------------- ")
+                dftbmd.relax()
+                ut.print_end()
+            except KeyboardInterrupt:
+                ut.print_error("Interrupted by user!")
+                sys.exit(0)
         
         if args.nvtmd:
-            print(" ----------------------------------------------------------------- ")
-            print(" 4th flow: DFTB-MD: (Relaxation) --> NVT-MD --> (Nve-md) --> (Oclimax) ")
-            print(" ----------------------------------------------------------------- ")
-            dftbmd.nvtmd()
-            print_end()
+            try:
+                print(" ----------------------------------------------------------------- ")
+                print(" 4th flow: DFTB-MD: (Relaxation) --> NVT-MD --> (Nve-md) --> (Oclimax) ")
+                print(" ----------------------------------------------------------------- ")
+                dftbmd.nvtmd()
+                ut.print_end()
+            except KeyboardInterrupt:
+                ut.print_error("Interrupted by user!")
+                sys.exit(0)
 
         if args.nvemd:  
-            print(" ----------------------------------------------------------------- ")
-            print(" 4th flow: DFTB-MD: (Relaxation) --> (Nvt-md) --> NVE-MD --> (Oclimax) ")
-            print(" ----------------------------------------------------------------- ")
-            dftbmd.nvemd()
-            print_end()
+            try:
+                print(" ----------------------------------------------------------------- ")
+                print(" 4th flow: DFTB-MD: (Relaxation) --> (Nvt-md) --> NVE-MD --> (Oclimax) ")
+                print(" ----------------------------------------------------------------- ")
+                dftbmd.nvemd()
+                ut.print_end()
+            except KeyboardInterrupt:
+                ut.print_error("Interrupted by user!")
+                sys.exit(0)
         
         if args.oclimax:
-            print(" ----------------------------------------------------------------- ")
-            print(" 4th flow: DFTB-MD: (Relaxation) --> (Nvt-md) --> (Nve-md) --> OCLIMAX ")
-            print(" ----------------------------------------------------------------- ")
-            dftbmd.oclimax()
-            print_end()
+            try:
+                print(" ----------------------------------------------------------------- ")
+                print(" 4th flow: DFTB-MD: (Relaxation) --> (Nvt-md) --> (Nve-md) --> OCLIMAX ")
+                print(" ----------------------------------------------------------------- ")
+                dftbmd.oclimax()
+                ut.print_end()
+            except KeyboardInterrupt:
+                ut.print_error("Interrupted by user!")
+                sys.exit(0)
         
