@@ -115,14 +115,14 @@ class Dftfd:
         ph_kpts = [1,1,1] # The kpoints for phonon simulation
         if not os.path.exists(os.path.join(self.main_path, "2-phonons", "mesh.yaml")): # Check whether the phonon simulation is finished. 
             print(" Using Phonopy to create displaced structures! ")
-            src = os.path.join(self.main_path, "1-relax', 'CONTCAR") # source file
+            src = os.path.join(self.main_path, "1-relax", "CONTCAR") # source file
             dst = os.path.join(self.main_path, "2-phonons") # destination
             os.makedirs(dst, exist_ok=True)
             os.chdir(dst)
             if not os.path.exists(src):
                 ut.print_error(f"Structure file '{src}' is missing. Exiting.")
                 sys.exit(1) # Exit the function if the source file is missing
-            shutil.copy(src, dst+'POSCAR')
+            shutil.copy(src, dst)
         
             ph.displace_structure(calc='vasp', supercell=[2,2,2]) # Create displaced POSCAR files by Phonopy
             print(" Displaced structures are created! ")
@@ -144,8 +144,8 @@ class Dftfd:
             root2, dirs2, files2 = next(os.walk(dst)) # Loop through every sub-folder in 2-phonons to write VASP input files and run script
             for d in dirs2:
                 if len(d) <= 3:
-                    geo = os.path.join(self.main_path, '2-phonons', d, 'POSCAR')
-                    os.chdir(os.path.join(self.main_path, '2-phonons', d))
+                    geo = os.path.join(self.main_path, '2-phonons', d)
+                    os.chdir(geo)
                     atom = ase.io.read(getGeometry(geo))
                     va.dft(self.disp, self.fmax, kpts=ph_kpts, atoms=atom, mode=2)
                     if not os.path.exists(os.path.join(self.main_path, '2-phonons', d, 'vasprun.xml')):
@@ -183,13 +183,15 @@ class Dftfd:
                     
                     os.chdir('..')
          
-        ph.get_force_sets(calc='vasp')
-        ph.run_mesh(self.mesh)
-    
     def oclimax(self):
         """ oclimax simulation
         """
-        if not os.path.exists(os.path.join(self.main_path, "3-oclimax")):
+        os.chdir(os.path.join(self.main_path, '2-phonons')) # Phonopy mesh simulation
+        ph.get_force_sets(calc='vasp')
+        ph.run_mesh(self.mesh)
+        os.chdir(self.main_path)
+
+        if not os.path.exists(os.path.join(self.main_path, "3-oclimax", "ocl.out")):
             ocl.oclimax(dt=1.0,params=None,task=0,e_unit=0,mode=1)
 
 # 2nd flow: DFTB-FD
@@ -265,7 +267,7 @@ class Dftbfd:
             for d in dirs2:
                 if len(d) <= 3:
                     geo = os.path.join(self.main_path, '2-phonons', d)
-                    os.chdir(os.path.join(self.main_path, '2-phonons', d))
+                    os.chdir(geo)
                     if not os.path.exists(geo+'results.tag'):
                         atom = ase.io.read(getGeometry(geo))
                         db.force(self.disp, kpts=ph_kpts, atoms=atom)
@@ -278,7 +280,7 @@ class Dftbfd:
     def oclimax(self):
         """ oclimax simulation
         """
-        if not os.path.exists(os.path.join(self.main_path, "3-oclimax")):
+        if not os.path.exists(os.path.join(self.main_path, "3-oclimax", "ocl.out")):
             ocl.oclimax(dt=1.0,params=None,task=0,e_unit=0,mode=1)
 
 # 3rd flow: DFT-MD
@@ -415,7 +417,7 @@ class Dftmd:
         """ NVE-MD simulation
         """
         md_kpts = [1,1,1]
-        if not os.path.exists(os.path.join(self.main_path, "3-nvemd")):
+        if not os.path.exists(os.path.join(self.main_path, "3-nvemd", "1", "vasprun.xml")):
             print(" NVE-MD simulation! ")
             os.makedirs(os.path.join(self.main_path, "3-nvemd"), exist_ok=True)
             atom = ase.io.read(os.path.join(self.main_path,'2-nvtmd','CONTCAR'))
@@ -428,38 +430,39 @@ class Dftmd:
                 atom = ase.io.read('3-nvemd/'+str(i)+'/CONTCAR')
                 os.makedirs(os.path.join(self.main_path, "3-nvemd", str(i+1)), exist_ok=True)
                 os.chdir(os.path.join(self.main_path, "3-nvemd", str(i+1)))
-                va.md(self.disp,self.nsw2,self.temp,kpts=md_kpts,atoms=atom,ensemble=2)
+                if not os.path.exists(os.path.join(self.main_path, "3-nvemd", f"{i}", "vasprun.xml")):
+                    va.md(self.disp,self.nsw2,self.temp,kpts=md_kpts,atoms=atom,ensemble=2)
 
-                if local:
-                    subprocess.run('vasp_std > nvemd.out', shell=True) # Run VASP on local machine
+                    if local:
+                        subprocess.run('vasp_std > nvemd.out', shell=True) # Run VASP on local machine
 
-                if self.gpu:
-                    slurm_script = ["#!/bin/bash\n",
-                    f"#SBATCH -A {self.account}\n",
-                    "#SBATCH -C gpu\n",
-                    "#SBATCH -q regular\n",
-                    "#SBATCH -N 2\n",
-                    f"#SBATCH -t {self.time}\n",
-                    "#SBATCH -J vasp_nvemd\n",
-                    "#SBATCH -o vasp_nvemd-%j.out\n",
-                    "#SBATCH -e vasp_nvemd-%j.err\n",
-                    "\n",
-                    "module load vasp/6.4.3-gpu\n",
-                    "\n",
-                    "export OMP_NUM_THREADS=1\n",
-                    "export OMP_PLACES=threads\n",
-                    "export OMP_PROC_BIND=spread\n",
-                    "\n",
-                    "srun -n {self.hpc[0]} -c {self.hpc[1]} -G {self.hpc[2]} --cpu-bind=cores --gpu-bind=none vasp_std" 
-                    ]
-                    slurm_filename = "vasp_nvemd.slurm"
-                    with open(slurm_filename, "w") as f:
-                        f.writelines(slurm_script)
-                    subprocess.run(f"sbatch {slurm_filename}", shell=True)
-                    print("VASP NVEMD job submitted!")
+                    if self.gpu:
+                        slurm_script = ["#!/bin/bash\n",
+                        f"#SBATCH -A {self.account}\n",
+                        "#SBATCH -C gpu\n",
+                        "#SBATCH -q regular\n",
+                        "#SBATCH -N 2\n",
+                        f"#SBATCH -t {self.time}\n",
+                        "#SBATCH -J vasp_nvemd\n",
+                        "#SBATCH -o vasp_nvemd-%j.out\n",
+                        "#SBATCH -e vasp_nvemd-%j.err\n",
+                        "\n",
+                        "module load vasp/6.4.3-gpu\n",
+                        "\n",
+                        "export OMP_NUM_THREADS=1\n",
+                        "export OMP_PLACES=threads\n",
+                        "export OMP_PROC_BIND=spread\n",
+                        "\n",
+                        "srun -n {self.hpc[0]} -c {self.hpc[1]} -G {self.hpc[2]} --cpu-bind=cores --gpu-bind=none vasp_std" 
+                        ]
+                        slurm_filename = "vasp_nvemd.slurm"
+                        with open(slurm_filename, "w") as f:
+                            f.writelines(slurm_script)
+                        subprocess.run(f"sbatch {slurm_filename}", shell=True)
+                        print("VASP NVEMD job submitted!")
 
-                else:
-                    subprocess.run(f'srun -n {self.hpc[0]} -c {self.hpc[1]} --cpu-bind=cores vasp_std > nvemd.out', shell=True) # Run VASP on hpc cpu nodes
+                    else:
+                        subprocess.run(f'srun -n {self.hpc[0]} -c {self.hpc[1]} --cpu-bind=cores vasp_std > nvemd.out', shell=True) # Run VASP on hpc cpu nodes
                 os.chdir('..')
 
         else:
@@ -468,7 +471,7 @@ class Dftmd:
     def oclimax(self):
         """ oclimax simulation
         """
-        if not os.path.exists(os.path.join(self.main_path, "4-oclimax")):
+        if not os.path.exists(os.path.join(self.main_path, "4-oclimax", "ocl.out")):
             ocl.oclimax(dt=1.0,params=None,task=0,e_unit=0,mode=2)
 
 # 4th flow: DFTB-MD
@@ -519,7 +522,7 @@ class Dftbmd:
         """ NVT-MD simulation
         """
         md_kpts = [1,1,1]
-        if not os.path.exists(os.path.join(self.main_path, "2-nvtmd", "nvt.out")): # Check whether the nvtmd simulation is finished.
+        if not os.path.exists(os.path.join(self.main_path, "2-nvtmd", "nvtmd.out")): # Check whether the nvtmd simulation is finished.
             print(" NVT-MD simulation! ")
             os.makedirs(os.path.join(self.main_path, "2-nvtmd"), exist_ok=True)
             os.chdir(os.path.join(self.main_path, "2-nvtmd"))
@@ -539,7 +542,7 @@ class Dftbmd:
         """ 
         md_kpts = [1,1,1]
         letters = list(string.ascii_lowercase) # Naming the folders with letters
-        if not os.path.exists(os.path.join(self.main_path, "3-nvemd", "f{self.steps}")):
+        if not os.path.exists(os.path.join(self.main_path, "3-nvemd", "a", "nvemd.out")): # Check whether the nvemd simulation is finished.
             print(" NVE-MD simulation! ")
             os.makedirs(os.path.join(self.main_path, "3-nvemd"), exist_ok=True) # Here we will create subfolders for NVE-MD simulation.
             src = os.path.join(self.main_path, "2-nvtmd", "restart") # source folder
@@ -570,15 +573,16 @@ class Dftbmd:
             os.chdir('..')
 
             for i in range(0,self.steps-1): # We separate the NVE-MD simulation into multiple folders
-                src_ = os.path.join(self.main_path, "3-nvemd", letters[i], 'restart') # source folder
-                dst_ = os.path.join(self.main_path, "3-nvemd", letters[i+1]) # destination folder
-                shutil.copytree(src_, dst_)
-                os.chdir(os.path.join(self.main_path, "3-nvemd", letters[i+1]))
-                subprocess.run('dftb+ > nvemd.out', shell=True)
-                rd.make_files(max_iter=0,extra_files=[],output_dir=None,
+                if not os.path.exists(os.path.join(self.main_path, "3-nvemd", letters[i+1], "nvemd.out")):
+                    src_ = os.path.join(self.main_path, "3-nvemd", letters[i], 'restart') # source folder
+                    dst_ = os.path.join(self.main_path, "3-nvemd", letters[i+1]) # destination folder
+                    shutil.copytree(src_, dst_)
+                    os.chdir(os.path.join(self.main_path, "3-nvemd", letters[i+1]))
+                    subprocess.run('dftb+ > nvemd.out', shell=True)
+                    rd.make_files(max_iter=0,extra_files=[],output_dir=None,
                             self_copy=False,write_over=False,force_restart=False,
                             restart_from=-1)
-                os.chdir('..')
+                    os.chdir('..')
 
             # Have to collect the trajectory files and put it together.
             rc.collect(steps=self.steps)
@@ -589,5 +593,5 @@ class Dftbmd:
     def oclimax(self):
         """ oclimax simulation
         """
-        if not os.path.exists(os.path.join(self.main_path, "4-oclimax")):
+        if not os.path.exists(os.path.join(self.main_path, "4-oclimax", "ocl.out")):
             ocl.oclimax(dt=1.0,params=None,task=0,e_unit=0,mode=3)
