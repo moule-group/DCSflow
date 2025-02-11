@@ -1,26 +1,27 @@
-# Example 1 of DCSflow: workflow 1
+# Example of DCSflow: workflow 1
 
 This example will show you the how to use workflow 1 (DFT-FD)
 
 ## Usage
 
-1. HPC (NERSC as example here)
+We will show the example running on HPC (NERSC as example here)
 
-Use interactive jobs, if VASP 6, we recommend using GPU.
+1. Relaxation, need specify account number 
 
-GPU
 ```
-salloc --nodes 2 --qos interactive --time 01:00:00 --constraint gpu --gpus 8 --account mxxxx
-```
-
-CPU 
-```
-salloc --nodes 1 --qos interactive --time 01:00:00 --constraint cpu --account mxxxx
+dcsflow -w 1 -r -a mxxxx
 ```
 
-Load vasp module 
+2. Phonon
 ```
-module load vasp/6.4.2-gpu 
+dcsflow -w 1 -p 
 ```
+
+3. Oclimax
+```
+dcsflow -w 1 -o
+```
+
+
 
 

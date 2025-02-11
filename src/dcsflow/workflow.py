@@ -235,7 +235,7 @@ class Dftbfd:
         """ Phonopy simulation
         """
         ph_kpts = [1,1,1] # The kpoints for phonon simulation
-        if not os.path.exists(os.path.join(self.main_path, "2-phonons" ,"mesh.yaml")): # Check whether the phonon simulation is finished. 
+        if not os.path.exists(os.path.join(self.main_path, "2-phonons", "mesh.yaml")): # Check whether the phonon simulation is finished. 
             print(" Using Phonopy to create displaced structures! ")
             src = os.path.join(self.main_path, '1-relax', 'geo_end.gen') # source file
             dst = os.path.join(self.main_path, '2-phonons') # destination
@@ -300,7 +300,7 @@ class Dftmd:
     teend (float): The final temperature for MD simulation, Defaults to 150K. this is useful when training MLFF using NPT-MD
     """
 
-    def __init__(self, account, local, gpu, hpc, time, kpts, disp, max, nsw1, nsw2, steps, supercell, tebeg, teend):
+    def __init__(self, account, local, gpu, hpc, time, kpts, disp, fmax, nsw1, nsw2, steps, supercell, tebeg, teend):
         self.account = account
         self.local = local
         self.gpu = gpu
