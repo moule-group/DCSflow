@@ -1,6 +1,6 @@
 # Davis Computational Spectroscopy Workflow 
 
-DCS-flow is a tool to simulate inelastic neutron scattering (INS) spectrum, it is still under development.
+The Davis Computational Spectroscopy workflow (DCS-Flow) was designed to connect and automate different material sciences tools which facilitate the use and comparison of electronic methods such as DFT, DFTB; molecular mechanics method such as molecular dynamics to simulate the structure and dynamics of materials properties for improved structure property prediction. DCS-Flow provides an efficient workflow to create databases of inelastic neutron scattering (INS) simulations
 
 
 ## Installation
@@ -17,7 +17,6 @@ DCS-flow is a tool to simulate inelastic neutron scattering (INS) spectrum, it i
     mamba install 'dftbplus=*=nompi_*'
 ```
 
-
 3. Oclimax: Please refer to the page: https://sites.google.com/site/ornliceman/download .
 
 4. Setting up environmental variables in configuration file (.bashrc)
@@ -27,7 +26,6 @@ export DFTB_PREFIX="your_path/slako/mio/mio-1-1/" # SK files for DFTB
 export PATH="your_path/oclimax/bin":$PATH # Oclimax path
 export VASP_PP_PATH="your_path" # VASP PP path
 ```
-
 
 ## Description
 
@@ -47,7 +45,7 @@ There are 2 methods simulating phonon spectrum and convert into inelastic neutro
 
     (d) 4th flow: DFTB-MD: Relaxation --> Nvt-md --> Nve-md --> Oclimax
 
-3. Commands table
+3. Commands table (the bold text is the default value)
 
 |  Command |Explanation| DFT-FD  |  DFTB-FD |  DFT-MD  | DFTB-MD  |   
 |----------|----------|----------|----------|----------|----------|
@@ -61,7 +59,7 @@ There are 2 methods simulating phonon spectrum and convert into inelastic neutro
 |    -g    | Running VASP on HPC GPU mode, apply when workflow = 1 or 3 (bootlean). If Flase, run on CPU mode |  **True**/False   |   N/A   |  **True**/False |  N/A   | 
 |    -a    | If -g, set your account # in slurm script (str) | your account #      |    N/A   |  your account #  |    N/A   |
 |    -t    | If -g, set time limit on HPC | **01:00:00** | N/A | **01:00:00** | N/A |  
-|    -H    | srun setting for VASP simulation, ex: srun -n 8 -c 32 -G 8 --cpu-bind=cores --gpu-bind=none vasp_std"| **8 32 8** |  N/A  | **8 32 8** |  N/A  |  
+|    -H    | srun setting for VASP simulation, i.e.: srun -n 8 -c 32 -G 8 --cpu-bind=cores --gpu-bind=none vasp_std"| **8 32 8** |  N/A  | **8 32 8** |  N/A  |  
 |    -f    | Converge if forces on all atoms < fmax| Float  **1e-2**   |  Float **1e-2**   |  Float **1e-2**   | Float **1e-2**   |
 |    -t1   | Initial temperature for MD simulation (K) |   N/A    |   N/A    |   Float **150.0**   |    Float **150.0**   |
 |    -t2   | Final temperature for MD simulation (K), currently not under usage|   N/A    |    N/A   |  Float **150.0**   |    N/A   |

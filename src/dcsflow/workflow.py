@@ -417,25 +417,19 @@ class Dftmd:
         """ NVE-MD simulation
         """
         md_kpts = [1,1,1]
-        if not os.path.exists(os.path.join(self.main_path, "3-nvemd", "1", "vasprun.xml")):
+        if not os.path.exists(os.path.join(self.main_path, "3-nvemd", f"{self.steps}", "vasprun.xml")):
             print(" NVE-MD simulation! ")
             os.makedirs(os.path.join(self.main_path, "3-nvemd"), exist_ok=True)
-            atom = ase.io.read(os.path.join(self.main_path,'2-nvtmd','CONTCAR'))
-            os.makedirs(os.path.join(self.main_path, "3-nvemd", "1"), exist_ok=True)
-            os.chdir(os.path.join(self.main_path, "3-nvemd", "1"))
-            va.md(self.disp,self.nsw2,self.tebeg,self.teend,kpts=md_kpts,atoms=atom,ensemble=2)
-            subprocess.run('vasp_std > nvemd.out', shell=True)
-            os.chdir('..')
-            for i in range(1,self.steps):
-                atom = ase.io.read('3-nvemd/'+str(i)+'/CONTCAR')
-                os.makedirs(os.path.join(self.main_path, "3-nvemd", str(i+1)), exist_ok=True)
-                os.chdir(os.path.join(self.main_path, "3-nvemd", str(i+1)))
-                if not os.path.exists(os.path.join(self.main_path, "3-nvemd", f"{i}", "vasprun.xml")):
-                    va.md(self.disp,self.nsw2,self.temp,kpts=md_kpts,atoms=atom,ensemble=2)
+            if not os.path.exists(os.path.join(self.main_path, "3-nvemd", "1", "vasprun.xml")):
+                atom = ase.io.read(os.path.join(self.main_path,'2-nvtmd','CONTCAR'))
+                os.makedirs(os.path.join(self.main_path, "3-nvemd", "1"), exist_ok=True)
+                os.chdir(os.path.join(self.main_path, "3-nvemd", "1"))
+                va.md(self.disp,self.nsw2,self.tebeg,self.teend,kpts=md_kpts,atoms=atom,ensemble=2)
+                
+                if local:
+                    subprocess.run('vasp_std > nvemd.out', shell=True) # Run VASP on local machine
 
-                    if local:
-                        subprocess.run('vasp_std > nvemd.out', shell=True) # Run VASP on local machine
-
+                else:
                     if self.gpu:
                         slurm_script = ["#!/bin/bash\n",
                         f"#SBATCH -A {self.account}\n",
@@ -453,16 +447,58 @@ class Dftmd:
                         "export OMP_PLACES=threads\n",
                         "export OMP_PROC_BIND=spread\n",
                         "\n",
-                        "srun -n {self.hpc[0]} -c {self.hpc[1]} -G {self.hpc[2]} --cpu-bind=cores --gpu-bind=none vasp_std" 
+                        f"srun -n {self.hpc[0]} -c {self.hpc[1]} -G {self.hpc[2]} --cpu-bind=cores --gpu-bind=none vasp_std" 
                         ]
                         slurm_filename = "vasp_nvemd.slurm"
                         with open(slurm_filename, "w") as f:
                             f.writelines(slurm_script)
                         subprocess.run(f"sbatch {slurm_filename}", shell=True)
-                        print("VASP NVEMD job submitted!")
+                        print(" Folder 1 VASP NVEMD simulation submitted! ")
+
+                    else: # CPU
+                        subprocess.run(f'srun -n {self.hpc[0]} -c {self.hpc[1]} --cpu-bind=cores vasp_std > nvemd.out', shell=True) # Run VASP on hpc cpu nodes
+
+                os.chdir('..')
+
+            for i in range(1,self.steps):
+                atom = ase.io.read('3-nvemd/'+str(i)+'/CONTCAR')
+                os.makedirs(os.path.join(self.main_path, "3-nvemd", str(i+1)), exist_ok=True)
+                os.chdir(os.path.join(self.main_path, "3-nvemd", str(i+1)))
+                if not os.path.exists(os.path.join(self.main_path, "3-nvemd", f"{i}", "vasprun.xml")):
+                    print(f" Running folder {i} MD simulation! ")
+                    va.md(self.disp,self.nsw2,self.temp,kpts=md_kpts,atoms=atom,ensemble=2)
+
+                    if local:
+                        subprocess.run('vasp_std > nvemd.out', shell=True) # Run VASP on local machine
 
                     else:
-                        subprocess.run(f'srun -n {self.hpc[0]} -c {self.hpc[1]} --cpu-bind=cores vasp_std > nvemd.out', shell=True) # Run VASP on hpc cpu nodes
+                        if self.gpu:
+                            slurm_script = ["#!/bin/bash\n",
+                            f"#SBATCH -A {self.account}\n",
+                            "#SBATCH -C gpu\n",
+                            "#SBATCH -q regular\n",
+                            "#SBATCH -N 2\n",
+                            f"#SBATCH -t {self.time}\n",
+                            "#SBATCH -J vasp_nvemd\n",
+                            "#SBATCH -o vasp_nvemd-%j.out\n",
+                            "#SBATCH -e vasp_nvemd-%j.err\n",
+                            "\n",
+                            "module load vasp/6.4.3-gpu\n",
+                            "\n",
+                            "export OMP_NUM_THREADS=1\n",
+                            "export OMP_PLACES=threads\n",
+                            "export OMP_PROC_BIND=spread\n",
+                            "\n",
+                            f"srun -n {self.hpc[0]} -c {self.hpc[1]} -G {self.hpc[2]} --cpu-bind=cores --gpu-bind=none vasp_std" 
+                            ]
+                            slurm_filename = "vasp_nvemd.slurm"
+                            with open(slurm_filename, "w") as f:
+                                f.writelines(slurm_script)
+                            subprocess.run(f"sbatch {slurm_filename}", shell=True)
+                            print(f" Folder {i} VASP NVEMD job submitted!")
+
+                        else:
+                            subprocess.run(f'srun -n {self.hpc[0]} -c {self.hpc[1]} --cpu-bind=cores vasp_std > nvemd.out', shell=True) # Run VASP on hpc cpu nodes
                 os.chdir('..')
 
         else:
@@ -542,38 +578,38 @@ class Dftbmd:
         """ 
         md_kpts = [1,1,1]
         letters = list(string.ascii_lowercase) # Naming the folders with letters
-        if not os.path.exists(os.path.join(self.main_path, "3-nvemd", "a", "nvemd.out")): # Check whether the nvemd simulation is finished.
+        if not os.path.exists(os.path.join(self.main_path, "3-nvemd", f"{letters[self.steps]}", "nvemd.out")): # Check whether the nvemd simulation is finished.
             print(" NVE-MD simulation! ")
             os.makedirs(os.path.join(self.main_path, "3-nvemd"), exist_ok=True) # Here we will create subfolders for NVE-MD simulation.
-            src = os.path.join(self.main_path, "2-nvtmd", "restart") # source folder
-            dst = os.path.join(self.main_path, "3-nvemd", "a") # destination folder
-            shutil.copytree(src, dst)
-            os.chdir(os.path.join(self.main_path, "3-nvemd", "a"))
-            with open("dftb_in.hsd", "r") as f1:
-                data = f1.read()
+            if not os.path.exists(os.path.join(self.main_path, "3-nvemd", "a", "nvemd.out")): # Check whether the "a" simulation is finished.
+                src = os.path.join(self.main_path, "2-nvtmd", "restart") # source folder
+                dst = os.path.join(self.main_path, "3-nvemd", "a") # destination folder
+                shutil.copytree(src, dst)
+                os.chdir(os.path.join(self.main_path, "3-nvemd", "a"))
+                with open("dftb_in.hsd", "r") as f1:
+                    data = f1.read()
             
-            data = re.sub(
-                    r"Thermostat\s*\{[^{}]*\{[\s\S]*?\}[\s\S]*?\}",  # Match entire "Thermostat { ... }" with nested braces
-                    "Thermostat {None{}",  # Replace with an empty Thermostat block, this is for NVE-MD simulation
-                    data,
-                    flags=re.MULTILINE
-                )
-            data = re.sub(
-                    r"Steps\s*=\s*\d+",  # Match "Steps = <number>"
-                    f"Steps = {self.nsw2}",  # Replace with the desired number
-                    data
-                    )
-            with open("dftb_in.hsd", "w") as f2:
-                f2.write(data)
+                data = re.sub(
+                        r"Thermostat\s*\{[^{}]*\{[\s\S]*?\}[\s\S]*?\}",  # Match entire "Thermostat { ... }" with nested braces
+                        "Thermostat {None{}",  # Replace with an empty Thermostat block, this is for NVE-MD simulation
+                        data,
+                        flags=re.MULTILINE)
+                data = re.sub(
+                        r"Steps\s*=\s*\d+",  # Match "Steps = <number>"
+                        f"Steps = {self.nsw2}",  # Replace with the desired number
+                        data)
+                with open("dftb_in.hsd", "w") as f2:
+                    f2.write(data)
 
-            subprocess.run('dftb+ > nvemd.out', shell=True)
-            rd.make_files(max_iter=0,extra_files=[],output_dir=None,
-                        self_copy=False,write_over=False,force_restart=False,
-                        restart_from=-1)
-            os.chdir('..')
+                subprocess.run('dftb+ > nvemd.out', shell=True)
+                rd.make_files(max_iter=0,extra_files=[],output_dir=None,
+                            self_copy=False,write_over=False,force_restart=False,
+                            restart_from=-1)
+                os.chdir('..')
 
             for i in range(0,self.steps-1): # We separate the NVE-MD simulation into multiple folders
                 if not os.path.exists(os.path.join(self.main_path, "3-nvemd", letters[i+1], "nvemd.out")):
+                    print(f" Running folder {letters[i+1]} MD simulation! ")
                     src_ = os.path.join(self.main_path, "3-nvemd", letters[i], 'restart') # source folder
                     dst_ = os.path.join(self.main_path, "3-nvemd", letters[i+1]) # destination folder
                     shutil.copytree(src_, dst_)

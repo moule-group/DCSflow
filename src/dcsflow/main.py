@@ -1,6 +1,7 @@
 from dcsflow.workflow import Dftfd, Dftbfd, Dftmd, Dftbmd
 import dcsflow.utils as ut
 import argparse
+import sys
 
 def main():
     """ The main function to run the DCS-Flow 
@@ -104,7 +105,7 @@ def main():
         
     if args.workflow == 3: 
         dftmd = Dftmd(account=args.account, local=args.local, gpu=args.gpu, hpc=args.hpc, time=args.time, disp=args.dispersion, fmax=args.force, kpts=args.kpts, 
-                      nsw1=args.nsw1, nsw2=args.nsw2, supercell=args.supercell, tebeg=args.temp1, teend=args.temp2)
+                      nsw1=args.nsw1, nsw2=args.nsw2, steps=args.steps, supercell=args.supercell, tebeg=args.temp1, teend=args.temp2)
         if args.relax:
             try:
                 print(" ----------------------------------------------------------------- ")
