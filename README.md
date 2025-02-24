@@ -22,6 +22,22 @@ pip install .
 
 3. Oclimax: Please refer to the page: https://sites.google.com/site/ornliceman/download .
 
+If using shifter instead of docker, we have to modify oclimax file. 
+
+```
+run() 
+{
+        CMD="shifter --image=docker:ornliceman/oclimax oclimax $1 ${@:2}"
+        command $CMD
+}
+
+convert()
+{
+        CMD="shifter --image=docker:ornliceman/oclimax 2climax.py $1 ${@:2}"
+        command $CMD
+}
+```
+
 4. Setting up environmental variables in configuration file (.bashrc)
 
 ```
