@@ -113,7 +113,7 @@ class Dftfd:
         """ Phonopy simulation
         """
         ph_kpts = [1,1,1] # The kpoints for phonon simulation
-        if not os.path.exists(os.path.join(self.main_path, "2-phonons", "mesh.yaml")): # Check whether the phonon simulation is finished. 
+        if not os.path.exists(os.path.join(self.main_path, "2-phonons", "SPOSCAR")): # Check whether the displaced structure is created. 
             print(" Using Phonopy to create displaced structures! ")
             src = os.path.join(self.main_path, "1-relax", "CONTCAR") # source file
             dst = os.path.join(self.main_path, "2-phonons") # destination
@@ -140,56 +140,57 @@ class Dftfd:
                 destination = os.path.join(folder_path, new_file)
                 shutil.move(source, destination) # Move the file into the corresponding folder
 
-            print(" Single point energy calculation using VASP for each displaced structure! ")    
-            root2, dirs2, files2 = next(os.walk(dst)) # Loop through every sub-folder in 2-phonons to write VASP input files and run script
-            for d in dirs2:
-                if len(d) <= 3:
-                    geo = os.path.join(self.main_path, '2-phonons', d)
-                    os.chdir(geo)
-                    atom = ase.io.read(getGeometry(geo))
-                    va.dft(self.disp, self.fmax, kpts=ph_kpts, atoms=atom, mode=2)
-                    if not os.path.exists(os.path.join(self.main_path, '2-phonons', d, 'vasprun.xml')):
+        print(" Single point energy calculation using VASP for each displaced structure! ")    
+        root2, dirs2, files2 = next(os.walk(dst)) # Loop through every sub-folder in 2-phonons to write VASP input files and run script
+        for d in dirs2:
+            if len(d) <= 3:
+                geo = os.path.join(self.main_path, '2-phonons', d)
+                os.chdir(geo)
+                atom = ase.io.read(getGeometry(geo))
+                va.dft(self.disp, self.fmax, kpts=ph_kpts, atoms=atom, mode=2)
+                if not os.path.exists(os.path.join(self.main_path, '2-phonons', d, 'vasprun.xml')):
 
-                        if self.local:
-                            subprocess.run('vasp_std > phonon.out', shell=True) # Run VASP on local machine
+                    if self.local:
+                        subprocess.run('vasp_std > phonon.out', shell=True) # Run VASP on local machine
 
-                        if self.gpu:
-                            slurm_script = ["#!/bin/bash\n",
-                            f"#SBATCH -A {self.account}\n", 
-                            "#SBATCH -C gpu\n",
-                            "#SBATCH -q regular\n",
-                            "#SBATCH -N 2\n",
-                            f"#SBATCH -t {self.time}\n",
-                            "#SBATCH -J vasp_phonon\n",
-                            "#SBATCH -o vasp_phonon-%j.out\n",
-                            "#SBATCH -e vasp_phonon-%j.err\n",
-                            "\n",
-                            "module load vasp/6.4.3-gpu\n",
-                            "\n",
-                            "export OMP_NUM_THREADS=1\n",
-                            "export OMP_PLACES=threads\n",
-                            "export OMP_PROC_BIND=spread\n",
-                            "\n",
-                            f"srun -n {self.hpc[0]} -c {self.hpc[1]} -G {self.hpc[2]} --cpu-bind=cores --gpu-bind=none vasp_std" 
-                            ]
-                            slurm_filename = "vasp_phonon.slurm"
-                            with open(slurm_filename, "w") as f:
-                                f.writelines(slurm_script)
-                            subprocess.run(f"sbatch {slurm_filename}", shell=True)
-                            print("VASP phonon job submitted!")
+                    if self.gpu:
+                        slurm_script = ["#!/bin/bash\n",
+                        f"#SBATCH -A {self.account}\n", 
+                        "#SBATCH -C gpu\n",
+                        "#SBATCH -q regular\n",
+                        "#SBATCH -N 2\n",
+                        f"#SBATCH -t {self.time}\n",
+                        "#SBATCH -J vasp_phonon\n",
+                        "#SBATCH -o vasp_phonon-%j.out\n",
+                        "#SBATCH -e vasp_phonon-%j.err\n",
+                        "\n",
+                        "module load vasp/6.4.3-gpu\n",
+                        "\n",
+                        "export OMP_NUM_THREADS=1\n",
+                        "export OMP_PLACES=threads\n",
+                        "export OMP_PROC_BIND=spread\n",
+                        "\n",
+                        f"srun -n {self.hpc[0]} -c {self.hpc[1]} -G {self.hpc[2]} --cpu-bind=cores --gpu-bind=none vasp_std" 
+                        ]
+                        slurm_filename = "vasp_phonon.slurm"
+                        with open(slurm_filename, "w") as f:
+                            f.writelines(slurm_script)
+                        subprocess.run(f"sbatch {slurm_filename}", shell=True)
+                        print("VASP phonon job submitted!")
 
-                        else:
-                            subprocess.run(f'srun -n {self.hpc[0]} -c {self.hpc[1]} --cpu-bind=cores vasp_std > phonon.out', shell=True) # Run VASP on hpc cpu nodes
+                    else:
+                        subprocess.run(f'srun -n {self.hpc[0]} -c {self.hpc[1]} --cpu-bind=cores vasp_std > phonon.out', shell=True) # Run VASP on hpc cpu nodes
                     
-                    os.chdir('..')
+                os.chdir('..')
          
     def oclimax(self):
         """ oclimax simulation
         """
-        os.chdir(os.path.join(self.main_path, '2-phonons')) # Phonopy mesh simulation
-        ph.get_force_sets(calc='vasp')
-        ph.run_mesh(self.mesh)
-        os.chdir(self.main_path)
+        if not os.path.exists(os.path.join(self.main_path, "2-phonons", "mesh.yaml")):
+            os.chdir(os.path.join(self.main_path, '2-phonons')) # Phonopy mesh simulation
+            ph.get_force_sets(calc='vasp')
+            ph.run_mesh(self.mesh)
+            os.chdir(self.main_path)
 
         if not os.path.exists(os.path.join(self.main_path, "3-oclimax", "ocl.out")):
             ocl.oclimax(dt=1.0,params=None,task=0,e_unit=0,mode=1)

@@ -8,7 +8,10 @@ The Davis Computational Spectroscopy workflow (DCS-Flow) was designed to connect
 1. DCSflow
 
 ```
-
+git clone https://github.com/moule-group/DCSflow.git
+cd DCSflow
+conda create -n dcsflow
+pip install .
 ```
 
 2. DFTB+: Also need download Slater-Koster files from DFTB website https://dftb.org/parameters/download/all-sk-files .
