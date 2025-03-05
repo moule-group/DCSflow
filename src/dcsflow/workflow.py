@@ -186,7 +186,7 @@ class Dftfd:
     def oclimax(self):
         """ oclimax simulation
         """
-        if not os.path.exists(os.path.join(self.main_path, "2-phonons", "mesh.yaml")):
+        if not os.path.exists(os.path.join(self.main_path, "2-phonons", "FORCE_SETS")):
             os.chdir(os.path.join(self.main_path, '2-phonons')) # Phonopy mesh simulation
             ph.get_force_sets(calc='vasp')
             ph.run_mesh(self.mesh)
