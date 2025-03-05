@@ -20,8 +20,8 @@ def write_params(task, e_unit):
                 'TASK    =         {} # 0:inc approx. 1:coh+inc. 2:single-xtal Q-E. 3:single-xtal Q-Q\n'
                 'INSTR   =         0  # 0:VISION 1:indirect traj 2:direct traj 3:Q-E or Q-Q mesh\n'
                 'TEMP    =      5.00  # Temperature [K]\n'
-                'E_UNIT  =         0 # Energy unit [eu] (0:cm-1,1:meV,2:THz)\n'
-                'OUTPUT  =         0 3 # 0:standard, 1:restart, 2:SPE, 3:full, 4:DOS, 5:modes\n'
+                'E_UNIT  =         {} # Energy unit [eu] (0:cm-1,1:meV,2:THz)\n'
+                'OUTPUT  =      [0, 3] # 0:standard,1:restart,2:SPE,3:full,4:DOS,5:modes,6:S(Q),7:MSD\n'
  
                 '## Additional general parameters\n'
                 'MAXO    =        10  # Maximum order of excitation\n'
@@ -65,7 +65,8 @@ def write_params(task, e_unit):
                 '## Wing parameters\n'
                 'WING    =         0  # Wing calculation (0:no wing,1:isotropic,2:ST tensor)\n'
                 'A_ISO   =    0.0350  # Isotropic A_external for wing calculation\n'
-                'W_WIDTH =     150.0  # Energy width [eu] of initial wing)\n' .format(task, e_unit))
+                'W_WIDTH =     150.0  # Energy width [eu] of initial wing)\n' 
+                .format(task, e_unit))
     
 def run_oclimax(mode,params,dt):
     """
