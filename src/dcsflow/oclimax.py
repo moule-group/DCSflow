@@ -21,7 +21,7 @@ def write_params(task, e_unit):
                 'INSTR   =         0  # 0:VISION 1:indirect traj 2:direct traj 3:Q-E or Q-Q mesh\n'
                 'TEMP    =      5.00  # Temperature [K]\n'
                 'E_UNIT  =         {} # Energy unit [eu] (0:cm-1,1:meV,2:THz)\n'
-                'OUTPUT  =      [0 3] # 0:standard,1:restart,2:SPE,3:full,4:DOS,5:modes,6:S(Q),7:MSD\n'
+                'OUTPUT  =       0 3 # 0:standard,1:restart,2:SPE,3:full,4:DOS,5:modes,6:S(Q),7:MSD\n'
  
                 '## Additional general parameters\n'
                 'MAXO    =        10  # Maximum order of excitation\n'
