@@ -124,7 +124,7 @@ class Dftfd:
                 sys.exit(1) # Exit the function if the source file is missing
             shutil.copy(src, dst)
         
-            ph.displace_structure(calc='vasp', supercell=[2,2,2]) # Create displaced POSCAR files by Phonopy
+            ph.displace_structure(calc='vasp', supercell=self.supercell) # Create displaced POSCAR files by Phonopy
             print(" Displaced structures are created! ")
             root, dirs, files = next(os.walk(dst))
         
@@ -247,7 +247,7 @@ class Dftbfd:
                 sys.exit(1) # Exit the function if the source file is missing
             shutil.copy(src, dst)
         
-            ph.displace_structure(calc='dftbp', supercell=[2,2,2]) # Create displaced geo.genS files
+            ph.displace_structure(calc='dftbp', supercell=self.supercell) # Create displaced geo.genS files
             print(" Displaced structures are created! ")
             root, dirs, files = next(os.walk(dst))
         
