@@ -103,7 +103,29 @@ class Dftfd:
                 print("VASP relaxation job submitted!")
 
             else:
-                subprocess.run(f'srun -n {self.hpc[0]} -c {self.hpc[1]} --cpu-bind=cores vasp_std > relax.out', shell=True) # Run VASP on hpc cpu nodes
+                slurm_script = ["#!/bin/bash\n",
+                f"#SBATCH -A {self.account}\n", 
+                "#SBATCH -C cpu\n",
+                "#SBATCH -q regular\n",
+                "#SBATCH -N 2\n",
+                f"#SBATCH -t {self.time}\n",
+                "#SBATCH -J vasp_phonon\n",
+                "#SBATCH -o vasp_phonon-%j.out\n",
+                "#SBATCH -e vasp_phonon-%j.err\n",
+                "\n",
+                "module load vasp/6.4.3-cpu\n",
+                "\n",
+                "export OMP_NUM_THREADS=2\n",
+                "export OMP_PLACES=threads\n",
+                "export OMP_PROC_BIND=spread\n",
+                "\n",
+                f"srun -n 128 -c 4 --cpu-bind=cores vasp_std" 
+                ]
+                slurm_filename = "vasp_relax.slurm"
+                with open(slurm_filename, "w") as f:
+                    f.writelines(slurm_script)
+                subprocess.run(f"sbatch {slurm_filename}", shell=True)
+                print("VASP relaxation job submitted!") # Run VASP on hpc cpu nodes
             os.chdir(self.main_path)
             
         else:
@@ -179,7 +201,29 @@ class Dftfd:
                         print("VASP phonon job submitted!")
 
                     else:
-                        subprocess.run(f'srun -n {self.hpc[0]} -c {self.hpc[1]} --cpu-bind=cores vasp_std > phonon.out', shell=True) # Run VASP on hpc cpu nodes
+                        slurm_script = ["#!/bin/bash\n",
+                        f"#SBATCH -A {self.account}\n", 
+                        "#SBATCH -C cpu\n",
+                        "#SBATCH -q regular\n",
+                        "#SBATCH -N 2\n",
+                        f"#SBATCH -t {self.time}\n",
+                        "#SBATCH -J vasp_phonon\n",
+                        "#SBATCH -o vasp_phonon-%j.out\n",
+                        "#SBATCH -e vasp_phonon-%j.err\n",
+                        "\n",
+                        "module load vasp/6.4.3-cpu\n",
+                        "\n",
+                        "export OMP_NUM_THREADS=2\n",
+                        "export OMP_PLACES=threads\n",
+                        "export OMP_PROC_BIND=spread\n",
+                        "\n",
+                        f"srun -n 128 -c 4 --cpu-bind=cores vasp_std" 
+                        ]
+                        slurm_filename = "vasp_phonon.slurm"
+                        with open(slurm_filename, "w") as f:
+                            f.writelines(slurm_script)
+                        subprocess.run(f"sbatch {slurm_filename}", shell=True)
+                        print("VASP phonon job submitted!")
                     
                 os.chdir('..')
          
