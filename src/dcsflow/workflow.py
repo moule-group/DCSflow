@@ -151,9 +151,9 @@ class Dftfd:
             root, dirs, files = next(os.walk(dst))
         
             for file in files:
-                if '-' not in file:
+                if '-' not in file: # Ensures file name is in correct format
                     continue
-                folder_name = file.split('-')[1]  # Extracts '009' from 'POSCAR-009'
+                folder_name = file.split('-')[1]  # Extracts number, e.g. '009' from 'POSCAR-009'
                 folder_path = os.path.join(dst, folder_name)
                 os.makedirs(folder_path, exist_ok=True) # Create the folder if it doesn't exist
     
@@ -162,70 +162,60 @@ class Dftfd:
                 destination = os.path.join(folder_path, new_file)
                 shutil.move(source, destination) # Move the file into the corresponding folder
 
+                os.chdir(folder_path)
+                atom = ase.io.read(getGeometry(folder_path))
+                va.dft(self.disp, self.fmax, kpts=ph_kpts, atoms=atom, mode=2)
+
         print(" Single point energy calculation using VASP for each displaced structure! ")    
         root2, dirs2, files2 = next(os.walk(dst)) # Loop through every sub-folder in 2-phonons to write VASP input files and run script
-        for d in dirs2:
-            if len(d) <= 3:
-                geo = os.path.join(self.main_path, '2-phonons', d)
-                os.chdir(geo)
-                atom = ase.io.read(getGeometry(geo))
-                va.dft(self.disp, self.fmax, kpts=ph_kpts, atoms=atom, mode=2)
-                if not os.path.exists(os.path.join(self.main_path, '2-phonons', d, 'vasprun.xml')):
 
-                    if self.local:
-                        subprocess.run('vasp_std > phonon.out', shell=True) # Run VASP on local machine
+        # Write directories to phonon_dirs.txt for SLURM job array
+        phonon_dir_list = os.path.join(self.main_path, 'phonon_dirs.txt')
+        with open(phonon_dir_list, 'w') as f:
+            for d in dirs2:
+                f.write(f"{d}\n")
+                
+        # Generate SLURM job array script
+        node_type = "gpu" if self.gpu else "cpu"
+        vasp_module = f"vasp/6.4.3-{node_type}"
+        omp_threads = 1 if self.gpu else 2
+        cpu_bind = "--cpu-bind=cores"
+        gpu_bind = "--gpu-bind=none" if self.gpu else ""
+        srun_line = (
+            f"srun -n {self.hpc[0]} -c {self.hpc[1]} -G {self.hpc[2]} {cpu_bind} {gpu_bind} vasp_std"
+            if self.gpu else
+            "srun -n 128 -c 4 --cpu-bind=cores vasp_std"
+        )
 
-                    if self.gpu:
-                        slurm_script = ["#!/bin/bash\n",
-                        f"#SBATCH -A {self.account}\n", 
-                        "#SBATCH -C gpu\n",
-                        "#SBATCH -q regular\n",
-                        "#SBATCH -N 2\n",
-                        f"#SBATCH -t {self.time}\n",
-                        "#SBATCH -J vasp_phonon\n",
-                        "#SBATCH -o vasp_phonon-%j.out\n",
-                        "#SBATCH -e vasp_phonon-%j.err\n",
-                        "\n",
-                        "module load vasp/6.4.3-gpu\n",
-                        "\n",
-                        "export OMP_NUM_THREADS=1\n",
-                        "export OMP_PLACES=threads\n",
-                        "export OMP_PROC_BIND=spread\n",
-                        "\n",
-                        f"srun -n {self.hpc[0]} -c {self.hpc[1]} -G {self.hpc[2]} --cpu-bind=cores --gpu-bind=none vasp_std" 
-                        ]
-                        slurm_filename = "vasp_phonon.slurm"
-                        with open(slurm_filename, "w") as f:
-                            f.writelines(slurm_script)
-                        subprocess.run(f"sbatch {slurm_filename}", shell=True)
-                        print("VASP phonon job submitted!")
+        slurm_script = [
+            "#!/bin/bash\n",
+            f"#SBATCH -A {self.account}\n",
+            f"#SBATCH -C {node_type}\n",
+            "#SBATCH -q regular\n",
+            "#SBATCH -N 2\n",
+            f"#SBATCH -t {self.time}\n",
+            "#SBATCH -J vasp_ph_array\n",
+            "#SBATCH -o vasp_ph_array-%A_%a.out\n",
+            "#SBATCH -e vasp_ph_array-%A_%a.err\n",
+            f"#SBATCH --array=0-{len(dirs2)-1}\n",
+            "\n",
+            f"module load {vasp_module}\n",
+            f"export OMP_NUM_THREADS={omp_threads}\n",
+            "export OMP_PLACES=threads\n",
+            "export OMP_PROC_BIND=spread\n",
+            "\n",
+            f"DIR=$(sed -n \"$((SLURM_ARRAY_TASK_ID + 1))p\" {phonon_dir_list})\n",
+            f"cd {os.path.join(self.main_path, '2-phonons')}/$DIR || exit 1\n",
+            f"{srun_line.strip()}\n"
+        ]
 
-                    else:
-                        slurm_script = ["#!/bin/bash\n",
-                        f"#SBATCH -A {self.account}\n", 
-                        "#SBATCH -C cpu\n",
-                        "#SBATCH -q regular\n",
-                        "#SBATCH -N 2\n",
-                        f"#SBATCH -t {self.time}\n",
-                        "#SBATCH -J vasp_phonon\n",
-                        "#SBATCH -o vasp_phonon-%j.out\n",
-                        "#SBATCH -e vasp_phonon-%j.err\n",
-                        "\n",
-                        "module load vasp/6.4.3-cpu\n",
-                        "\n",
-                        "export OMP_NUM_THREADS=2\n",
-                        "export OMP_PLACES=threads\n",
-                        "export OMP_PROC_BIND=spread\n",
-                        "\n",
-                        f"srun -n 128 -c 4 --cpu-bind=cores vasp_std" 
-                        ]
-                        slurm_filename = "vasp_phonon.slurm"
-                        with open(slurm_filename, "w") as f:
-                            f.writelines(slurm_script)
-                        subprocess.run(f"sbatch {slurm_filename}", shell=True)
-                        print("VASP phonon job submitted!")
-                    
-                os.chdir('..')
+        # Submit SLURM job array
+        slurm_filename = os.path.join(self.main_path, "vasp_phonon_array.slurm")
+        with open(slurm_filename, "w") as f:
+            f.writelines(slurm_script)
+
+        subprocess.run(f"sbatch {slurm_filename}", shell=True)
+        print("VASP phonon job array submitted!")
          
     def oclimax(self):
         """ oclimax simulation

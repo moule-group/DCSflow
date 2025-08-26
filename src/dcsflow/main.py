@@ -14,7 +14,7 @@ def main():
     parser.add_argument("-nve", "--nvemd", action='store_true',default=False, help="NVE MD under each 3rd and 4th workflow") # Add an argument: nvemd
     parser.add_argument("-o", "--oclimax", action='store_true',default=False, help="Oclimax under each workflow") # Add an argument: oclimax
     parser.add_argument("-a", "--account", type=str, help="Submit VASP simulation on NERSC, type in your account!") # Add an argument: account
-    parser.add_argument("-time", "--time", type=str, default="01:00:00", help="Submit VASP simulation on NERSC, type the time limit (format: 00:hh:ss)!") # Add an argument: time
+    parser.add_argument("-time", "--time", type=str, default="01:00:00", help="Submit VASP simulation on NERSC, type the time limit (format: hh:mm:ss)!") # Add an argument: time
     parser.add_argument("-l", "--local", action='store_true', default=False, help="VASP simulation running in local desktops!") # Add an argument: local
     parser.add_argument("-g", "--gpu", action='store_true', default=True, help="VASP 6 simulation running in HPC GPU nodes!") # Add an argument: gpu
     parser.add_argument("-H", "--hpc", type=int, nargs=3, default=[8,32,8], help="srun setting for VASP simulation, ex: srun -n {8} -c {32} -G {8} --cpu-bind=cores --gpu-bind=none vasp_std") # Add an argument: hpc
