@@ -76,11 +76,22 @@ class Dftfd:
 
             if self.local:
                 subprocess.run('vasp_std > relax.out', shell=True) # Run VASP on local machine
+            
+            node_type = "gpu" if self.gpu else "cpu"
+            vasp_module = f"vasp/6.4.3-{node_type}"
+            omp_threads = 1 if self.gpu else 2
+            cpu_bind = "--cpu-bind=cores"
+            gpu_bind = "--gpu-bind=none" if self.gpu else ""
+            srun_line = (
+                f"srun -n {self.hpc[0]} -c {self.hpc[1]} -G {self.hpc[2]} {cpu_bind} {gpu_bind} vasp_std"
+                if self.gpu else
+                "srun -n 128 -c 4 --cpu-bind=cores vasp_std"
+            )
 
-            if self.gpu:
-                slurm_script = ["#!/bin/bash\n",
-                f"#SBATCH -A {self.account}\n", 
-                "#SBATCH -C gpu\n",
+            slurm_script = [
+                "#!/bin/bash\n",
+                f"#SBATCH -A {self.account}\n",
+                f"#SBATCH -C {node_type}\n",
                 "#SBATCH -q regular\n",
                 "#SBATCH -N 2\n",
                 f"#SBATCH -t {self.time}\n",
@@ -88,44 +99,20 @@ class Dftfd:
                 "#SBATCH -o vasp_relax-%j.out\n",
                 "#SBATCH -e vasp_relax-%j.err\n",
                 "\n",
-                "module load vasp/6.4.3-gpu\n",
+                f"module load {vasp_module}\n",
                 "\n",
-                "export OMP_NUM_THREADS=1\n",
+                f"export OMP_NUM_THREADS={omp_threads}\n",
                 "export OMP_PLACES=threads\n",
                 "export OMP_PROC_BIND=spread\n",
                 "\n",
-                f"srun -n {self.hpc[0]} -c {self.hpc[1]} -G {self.hpc[2]} --cpu-bind=cores --gpu-bind=none vasp_std"
-                ]
-                slurm_filename = "vasp_relax.slurm"
-                with open(slurm_filename, "w") as f:
-                    f.writelines(slurm_script)
-                subprocess.run(f"sbatch {slurm_filename}", shell=True)
-                print("VASP relaxation job submitted!")
+                f"{srun_line.strip()}\n"
+            ]
 
-            else:
-                slurm_script = ["#!/bin/bash\n",
-                f"#SBATCH -A {self.account}\n", 
-                "#SBATCH -C cpu\n",
-                "#SBATCH -q regular\n",
-                "#SBATCH -N 2\n",
-                f"#SBATCH -t {self.time}\n",
-                "#SBATCH -J vasp_phonon\n",
-                "#SBATCH -o vasp_phonon-%j.out\n",
-                "#SBATCH -e vasp_phonon-%j.err\n",
-                "\n",
-                "module load vasp/6.4.3-cpu\n",
-                "\n",
-                "export OMP_NUM_THREADS=2\n",
-                "export OMP_PLACES=threads\n",
-                "export OMP_PROC_BIND=spread\n",
-                "\n",
-                f"srun -n 128 -c 4 --cpu-bind=cores vasp_std" 
-                ]
-                slurm_filename = "vasp_relax.slurm"
-                with open(slurm_filename, "w") as f:
-                    f.writelines(slurm_script)
-                subprocess.run(f"sbatch {slurm_filename}", shell=True)
-                print("VASP relaxation job submitted!") # Run VASP on hpc cpu nodes
+            slurm_filename = "vasp_relax.slurm"
+            with open(slurm_filename, "w") as f:
+                f.writelines(slurm_script)
+            subprocess.run(f"sbatch {slurm_filename}", shell=True)
+            print("VASP relaxation job submitted!") # Run VASP on hpc cpu nodes
             os.chdir(self.main_path)
             
         else:
@@ -366,7 +353,7 @@ class Dftmd:
                 sys.exit(1)  # Exit the script with an error
             va.dft(self.disp, self.fmax, self.kpts, atoms=atom, mode='relax')
 
-            if local:
+            if self.local:
                 subprocess.run('vasp_std > relax.out', shell=True) # Run VASP on local machine
 
             if self.gpu:
@@ -414,7 +401,7 @@ class Dftmd:
             atom *= self.supercell
             va.md(self.disp,self.nsw1,self.tebeg,self.teend,kpts=md_kpts,atoms=atom,ensemble=1)
 
-            if local:
+            if self.local:
                 subprocess.run('vasp_std > nvtmd.out', shell=True) # Run VASP on local machine
 
             if self.gpu:
@@ -461,7 +448,7 @@ class Dftmd:
                 os.chdir(os.path.join(self.main_path, "3-nvemd", "1"))
                 va.md(self.disp,self.nsw2,self.tebeg,self.teend,kpts=md_kpts,atoms=atom,ensemble=2)
                 
-                if local:
+                if self.local:
                     subprocess.run('vasp_std > nvemd.out', shell=True) # Run VASP on local machine
 
                 else:
@@ -503,7 +490,7 @@ class Dftmd:
                     print(f" Running folder {i} MD simulation! ")
                     va.md(self.disp,self.nsw2,self.temp,kpts=md_kpts,atoms=atom,ensemble=2)
 
-                    if local:
+                    if self.local:
                         subprocess.run('vasp_std > nvemd.out', shell=True) # Run VASP on local machine
 
                     else:
