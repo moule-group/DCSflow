@@ -58,7 +58,7 @@ def get_force_sets(calc):
     FORCE_SETS file
     """
     root, dirs, files = next(os.walk(os.getcwd()))
-    dirs = [d for d in dirs if len(d) <= 3]
+    dirs = [d for d in dirs if len(d) <= 5]
     max_dir = max(dirs)
     if calc == 'vasp':
         subprocess.run(f"phonopy -f {{001..{max_dir}}}/vasprun.xml", shell=True)
